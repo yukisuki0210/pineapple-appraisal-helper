@@ -43,6 +43,11 @@
     .hero-meta strong{font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
     .value-input{display:block;min-width:0;width:100%;max-width:100%;height:46px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-size:16px;padding:10px 12px;outline:none;-webkit-appearance:none;appearance:none}
     .value-input:focus{border-color:#cca661;box-shadow:0 0 0 3px #d5b4682d}
+    .base-panel{padding:13px 16px;margin-top:0}
+    .base-panel .field-hint{margin-top:6px}
+    .unit-input{position:relative}
+    .unit-input .value-input{padding-right:42px}
+    .unit-input .unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:14px;font-weight:800;pointer-events:none}
     .field-label{display:block;font-size:12px;font-weight:700;margin:0 0 7px;color:#5e564a}
     .field-hint{font-size:11px;color:var(--muted);margin:7px 0 0;line-height:1.5}
     .selection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -95,6 +100,12 @@
     .choice-btn:disabled{opacity:.45;cursor:not-allowed}
     .field-group{margin-top:15px}
     .entry-hint{min-height:18px;margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+    .inline-prediction{background:var(--gold-light);border-radius:13px;padding:11px 12px;margin:0 0 15px}
+    .inline-prediction-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .inline-prediction-head span{font-size:11px;color:#73572b;font-weight:700}
+    .inline-prediction-head button{border:0;background:none;color:#7b5b27;font-size:11px;font-weight:800;padding:2px;white-space:nowrap}
+    .inline-prediction strong{display:block;font-size:16px;margin-top:3px}
+    .inline-prediction p{font-size:10px;line-height:1.45;color:#75674f;margin:5px 0 0}
     .stat-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
     .stat-card{min-width:0;border:1px solid var(--line);border-radius:13px;padding:11px 7px;background:#fff;text-align:center}
     .stat-card.recommended{border-color:var(--gold);background:#fcf6e9}
@@ -142,6 +153,11 @@
     </nav>
 
     <section id="view-current" class="view active" role="tabpanel" aria-labelledby="tab-current">
+      <div class="panel base-panel">
+        <label class="field-label" for="baseValue">收益基础 · 果子价值</label>
+        <div class="unit-input"><input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 2.5"><span class="unit">万</span></div>
+        <p class="field-hint">输入 2.5 即 2.5 万；预计收益也按“万”显示。</p>
+      </div>
       <div class="panel hero-card">
         <span class="overline">当前总倍率</span>
         <div class="big-multiplier" id="totalMultiplier" aria-live="polite">×1.000</div>
@@ -154,6 +170,11 @@
 
       <div class="panel">
         <div class="panel-head"><div><h2>本局翻牌</h2><p id="rowInstruction">依次选择位置、牌色和倍率</p></div><span class="step-pill" id="rowPill">第 1 行</span></div>
+        <div class="inline-prediction">
+          <div class="inline-prediction-head"><span id="inlinePredictionRow">待选第 1 行 · 历史样本推荐</span><button id="openPrediction" type="button">查看依据 ›</button></div>
+          <strong id="inlineRecommended">暂无历史推荐</strong>
+          <p id="inlinePredictionSummary">左 / 中 / 右暂无样本。样本不足，仅供参考；不能预测随机结果。</p>
+        </div>
         <div class="field-label">① 这次选了哪个位置</div>
         <div class="choice-grid" id="positionOptions" aria-label="选择位置">
           <button type="button" class="choice-btn" data-position="left">左</button>
@@ -177,9 +198,6 @@
 
       <div class="panel">
         <div class="panel-head"><div><h2>收益与收手参考</h2><p id="nextRowLabel">下一张：第 1 行</p></div><span class="step-pill" id="riskPill">谨慎</span></div>
-        <label class="field-label" for="baseValue">果子基础价值</label>
-        <input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值，例如 1000">
-        <p class="field-hint">预计收益 = 基础价值 × 当前总倍率。</p>
         <div class="probability"><div class="reward"><span>蓝牌 · 奖励</span><strong id="rewardProbability">2/3</strong></div><div class="penalty"><span>红牌 · 惩罚</span><strong id="penaltyProbability">1/3</strong></div></div>
         <div class="risk"><strong class="risk-badge" id="riskBadge">谨慎</strong><p id="riskText">前 3 行每行有 2 张奖励牌、1 张惩罚牌。只知道牌色比例，无法算出盈利概率。</p></div>
         <div class="decision-row"><button id="continueBtn" class="primary" type="button" disabled>继续鉴定</button><button id="stopBtn" class="secondary" type="button">立即收手</button></div>
@@ -187,7 +205,7 @@
         <p class="disclaimer">仅做风险参考。固定牌色比例不等于盈利概率。</p>
       </div>
       <details class="panel details-panel"><summary>收益试算 · 其他倍率</summary><div class="details-body">
-        <label class="field-label" for="trialBase">果子基础价值</label><input id="trialBase" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值">
+        <label class="field-label" for="trialBase">果子基础价值</label><div class="unit-input"><input id="trialBase" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 2.5"><span class="unit">万</span></div>
         <div style="height:13px"></div>
         <label class="field-label" for="trialMultiplier">当前总倍率</label><input id="trialMultiplier" class="value-input" type="number" min="0.01" max="1000000" step="any" inputmode="decimal" value="1">
         <button id="useCurrent" class="small-button" type="button" style="height:36px;margin-top:9px">带入本局</button>

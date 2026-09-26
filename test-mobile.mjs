@@ -66,7 +66,8 @@ try{
   }
   const result=await evaluate(`(()=>{
     const el=id=>document.getElementById(id);
-    el('baseValue').value='1000';el('baseValue').dispatchEvent(new Event('input'));
+    const baseFirst=!!(el('baseValue').compareDocumentPosition(el('totalMultiplier'))&Node.DOCUMENT_POSITION_FOLLOWING);
+    el('baseValue').value='2.5';el('baseValue').dispatchEvent(new Event('input'));
     document.querySelector('[data-position="left"]').click();
     document.querySelector('[data-color="blue"]').click();
     document.querySelector('[data-value="1.2"]').click();
@@ -92,25 +93,31 @@ try{
     el('undoBtn').click();
     const undone=el('totalMultiplier').textContent;
     el('resetBtn').click();
-    document.getElementById('tab-prediction').click();
+    const inline=[el('inlinePredictionRow').textContent,el('inlineRecommended').textContent,el('inlinePredictionSummary').textContent];
+    el('openPrediction').click();
+    const inlineLinkOpened=el('view-prediction').classList.contains('active');
     const prediction=[el('predictionRowLabel').textContent,el('recommendedPosition').textContent,el('sampleWarning').textContent,el('predictionCards').textContent];
     document.getElementById('tab-history').click();
     const history=[el('totalRecords').textContent,el('blueRecords').textContent,el('sessionCount').textContent,el('historyList').textContent];
     document.getElementById('tab-current').click();
-    el('trialBase').value='1000';el('trialBase').dispatchEvent(new Event('input'));
+    el('trialBase').value='2.5';el('trialBase').dispatchEvent(new Event('input'));
     el('trialMultiplier').value='2';el('trialMultiplier').dispatchEvent(new Event('input'));
     const trial=el('trialPayout').textContent;
     const stored=JSON.parse(localStorage.getItem('pineapple-appraisal-helper-v2'));
-    return {first,edit,second,third,undone,prediction,history,trial,storedCount:stored.entries.length};
+    return {baseFirst,first,edit,second,third,undone,inline,inlineLinkOpened,prediction,history,trial,storedCount:stored.entries.length,baseUnit:stored.baseUnit};
   })()`);
-  check(result.first.join('|')==='×1.200|1,200|2/3',`First row: ${JSON.stringify(result.first)}`);
+  check(result.baseFirst&&result.baseUnit==='wan','Base-value placement or unit failed');
+  check(result.first.join('|')==='×1.200|3万|2/3',`First row: ${JSON.stringify(result.first)}`);
   check(result.edit.join('|')==='1|middle|red|0.7',`Editing a recorded row: ${JSON.stringify(result.edit)}`);
-  check(result.second.join('|')==='×0.600|600',`Second row: ${JSON.stringify(result.second)}`);
+  check(result.second.join('|')==='×0.600|1.5万',`Second row: ${JSON.stringify(result.second)}`);
   check(result.third.join('|')==='×1.200|1/3|2/3',`Fourth-row risk: ${JSON.stringify(result.third)}`);
-  check(result.undone==='×0.600'&&result.trial==='2,000','Undo or trial failed');
+  check(result.undone==='×0.600'&&result.trial==='5万','Undo or trial failed');
+  check(result.inline[0].includes('第 1 行')&&result.inline[1].includes('左')&&result.inline[2].includes('样本不足')&&result.inlineLinkOpened,'Inline recommendation failed');
   check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('左')&&result.prediction[2].includes('样本不足')&&result.prediction[3].includes('样本 1'),'Historical recommendation failed');
   check(result.history[0]==='2'&&result.history[1]==='1'&&result.history[2]==='1'&&result.history[3].includes('右')&&result.storedCount===2,'Historical storage failed');
   await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  const currentCapture=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+  await writeFile(new URL('preview-current-with-history-390.png',import.meta.url),Buffer.from(currentCapture.data,'base64'));
   for(const view of ['prediction','history']){
     const width=await evaluate(`(()=>{document.getElementById('tab-${view}').click();return document.documentElement.scrollWidth})()`);
     check(width<=390,`${view} page overflows to ${width}px`);
@@ -144,8 +151,8 @@ try{
   await evaluate("(()=>{localStorage.removeItem('pineapple-appraisal-helper-v2');localStorage.setItem('pineapple-appraisal-helper-v1',JSON.stringify({rows:[1.2,0.5],awaiting:true,stopped:false,base:'1000'}));return true})()");
   await cdp('Page.navigate',{url:targetUrl});
   for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
-  const migration=await evaluate("({total:document.getElementById('totalMultiplier').textContent,records:document.getElementById('totalRecords').textContent,history:document.getElementById('historyList').textContent})");
-  check(migration.total==='×0.600'&&migration.records==='0'&&migration.history.includes('旧版未记录'),'Legacy data migration failed');
+  const migration=await evaluate("({total:document.getElementById('totalMultiplier').textContent,base:document.getElementById('baseValue').value,payout:document.getElementById('currentPayout').textContent,records:document.getElementById('totalRecords').textContent,history:document.getElementById('historyList').textContent})");
+  check(migration.total==='×0.600'&&migration.base==='0.1'&&migration.payout==='0.06万'&&migration.records==='0'&&migration.history.includes('旧版未记录'),'Legacy data migration failed');
   console.log('V1 multiplier history migration without invented position/color: passed');
 }finally{
   socket?.close();browser.kill();server.close();

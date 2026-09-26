@@ -10,6 +10,8 @@
   const validFactor=value=>Number.isFinite(Number(value))&&Number(value)>0&&Number(value)<=100;
   const saved=read(storageKey);
   const old=read('pineapple-appraisal-helper-v1');
+  const previousBase=saved?.base??old?.base??'';
+  const baseInWan=previousBase===''?'':saved?.baseUnit==='wan'?String(previousBase):Number.isFinite(Number(previousBase))?String(Number(previousBase)/10000):'';
   const sessionId=typeof saved?.sessionId==='string'?saved.sessionId:newId();
   const migrated=Array.isArray(old?.rows)?old.rows.filter(validFactor).slice(0,99).map((factor,index)=>({
     id:newId(),sessionId,row:index+1,position:null,color:null,multiplier:Number(factor),at:Date.now()
@@ -26,7 +28,7 @@
     version:2,sessionId,entries,
     awaiting:Boolean(saved?.awaiting??old?.awaiting),
     stopped:Boolean(saved?.stopped??old?.stopped),
-    base:saved?.base??old?.base??'',
+    base:baseInWan,baseUnit:'wan',
     draft:{
       position:validPosition(saved?.draft?.position)?saved.draft.position:null,
       color:validColor(saved?.draft?.color)?saved.draft.color:null,
@@ -41,7 +43,7 @@
   let visibleHistory=30;
   const validBase=value=>value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;
   const total=()=>currentRows().reduce((product,entry)=>product*entry.multiplier,1);
-  const money=value=>Number.isFinite(value)?new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2}).format(value):'—';
+  const wanMoney=value=>Number.isFinite(value)?new Intl.NumberFormat('zh-CN',{maximumFractionDigits:6}).format(value)+'万':'—';
   const factorText=value=>new Intl.NumberFormat('zh-CN',{minimumFractionDigits:3,maximumFractionDigits:3}).format(value);
   const placeText=value=>positions.find(([key])=>key===value)?.[1]||'旧版未记录';
   const colorText=value=>value==='blue'?'蓝牌':value==='red'?'红牌':'牌色未记录';
@@ -66,7 +68,7 @@
     const early=upcoming<=3;
     $('totalMultiplier').textContent='×'+factorText(t);
     $('revealedCount').textContent=rows.length+' 行';
-    $('currentPayout').textContent=validBase(state.base)?money(Number(state.base)*t):'—';
+    $('currentPayout').textContent=validBase(state.base)?wanMoney(Number(state.base)*t):'—';
     $('rowPill').textContent=state.stopped?'已收手':'第 '+current+' 行';
     $('rowInstruction').textContent=state.stopped?'本局已结束；重置可开始新局':state.awaiting?'第 '+current+' 行已记录，可调整本行或继续':'依次选择第 '+current+' 行的位置、牌色和倍率';
     $('nextRowLabel').textContent=state.stopped?'本局已结束':'下一张：第 '+upcoming+' 行';
@@ -81,7 +83,7 @@
     $('addCustom').disabled=state.stopped||(!state.awaiting&&rows.length>=99);
     $('customMultiplier').disabled=state.stopped||(!state.awaiting&&rows.length>=99);
     $('stoppedMessage').hidden=!state.stopped;
-    if(state.stopped)$('stoppedMessage').textContent='已收手 · '+rows.length+' 行 · 总倍率 ×'+factorText(t)+(validBase(state.base)?' · 预计收益 '+money(Number(state.base)*t):'。输入基础价值可查看收益。');
+    if(state.stopped)$('stoppedMessage').textContent='已收手 · '+rows.length+' 行 · 总倍率 ×'+factorText(t)+(validBase(state.base)?' · 预计收益 '+wanMoney(Number(state.base)*t):'。输入基础价值可查看收益。');
     document.querySelectorAll('[data-position]').forEach(button=>{
       button.disabled=state.stopped||(!state.awaiting&&rows.length>=99);
       button.classList.toggle('selected',button.dataset.position===state.draft.position);
@@ -111,11 +113,15 @@
     const early=row<=3;
     const stats=statsForRow(row);
     const best=recommendation(stats);
+    const insufficient=stats.some(item=>item.count<5);
+    $('inlinePredictionRow').textContent='待选第 '+row+' 行 · 历史样本推荐';
+    $('inlineRecommended').textContent=best?best.label+' · 历史出蓝率 '+Math.round(best.rate*100)+'%':'暂无历史推荐';
+    $('inlinePredictionSummary').textContent=stats.map(item=>item.label+' '+(item.rate===null?'—':Math.round(item.rate*100)+'%')+'（'+item.count+'条）').join(' · ')+'。'+(insufficient?'样本不足，仅供参考；':'历史样本仅供参考；')+'不能预测随机结果。';
     $('predictionRowLabel').textContent='统计第 '+row+' 行的历史选择';
     $('predictionReward').textContent=early?'2/3':'1/3';
     $('predictionPenalty').textContent=early?'1/3':'2/3';
     $('recommendedPosition').textContent=best?best.label+' · '+Math.round(best.rate*100)+'% 历史出蓝率':'暂无推荐';
-    $('sampleWarning').textContent=stats.some(item=>item.count<5)?'样本不足，仅供参考。当前行至少一个位置少于 5 条记录；即使样本增加，也不能预测随机结果。':'历史样本仅供参考；即使每个位置都有记录，也不能预测随机结果。';
+    $('sampleWarning').textContent=insufficient?'样本不足，仅供参考。当前行至少一个位置少于 5 条记录；即使样本增加，也不能预测随机结果。':'历史样本仅供参考；即使每个位置都有记录，也不能预测随机结果。';
     $('predictionCards').replaceChildren();
     stats.forEach(item=>{
       const card=document.createElement('div');card.className='stat-card'+(best?.position===item.position?' recommended':'');
@@ -183,6 +189,7 @@
   });
   $('resetBtn').addEventListener('click',()=>{state.sessionId=newId();state.awaiting=false;state.stopped=false;state.draft=blankDraft();render()});
   $('showMoreHistory').addEventListener('click',()=>{visibleHistory+=30;renderHistory()});
+  $('openPrediction').addEventListener('click',()=>{$('tab-prediction').click();window.scrollTo(0,0)});
   document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(other=>other.setAttribute('aria-selected',String(other===tab)));
     document.querySelectorAll('.view').forEach(view=>view.classList.toggle('active',view.id==='view-'+tab.dataset.view));
@@ -191,12 +198,12 @@
     const base=$('trialBase').value;
     const current=Number($('trialMultiplier').value);
     const valid=validBase(base)&&Number.isFinite(current)&&current>0&&current<=1000000;
-    $('trialPayout').textContent=valid?money(Number(base)*current):'—';
+    $('trialPayout').textContent=valid?wanMoney(Number(base)*current):'—';
     $('trialGrid').replaceChildren();
     choices.forEach(n=>{
       const button=document.createElement('button');button.type='button';button.className='trial-option';
       const heading=document.createElement('b');heading.textContent='×'+n.toFixed(1);
-      const value=document.createElement('span');value.textContent=valid?'总倍率 ×'+factorText(current*n)+' · 收益 '+money(Number(base)*current*n):'输入基础价值查看';
+      const value=document.createElement('span');value.textContent=valid?'总倍率 ×'+factorText(current*n)+' · 收益 '+wanMoney(Number(base)*current*n):'输入基础价值查看';
       button.append(heading,value);button.addEventListener('click',()=>{$('trialMultiplier').value=Number.isFinite(current)&&current>0?String(current*n):String(n);trial()});$('trialGrid').append(button);
     });
   }
