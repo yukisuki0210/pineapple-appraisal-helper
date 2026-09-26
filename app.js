@@ -40,13 +40,17 @@
     }
   };
   let sharedStats=null;
+  let sharedConditional=null;
+  let sharedPathLoaded=null;
+  let requestedPath=null;
+  let requestNumber=0;
   let syncMap=read(syncKey)||{};
   if(!syncMap||typeof syncMap!=='object'||Array.isArray(syncMap))syncMap={};
   let syncing=false;
   let syncQueued=false;
   let syncTimer;
-  const sharedKey=entry=>`r/${entry.row}/${entry.position}/${entry.color}/${entry.id}`;
-  const validSharedKey=key=>/^r\/(?:[1-9]|[1-9][0-9])\/(?:left|middle|right)\/(?:blue|red)\/[a-zA-Z0-9-]{12,80}$/.test(key);
+  const sharedKey=entry=>`s/${entry.sessionId}/${entry.row}/${entry.position}/${entry.color}/${entry.id}`;
+  const validSharedKey=key=>/^r\/(?:[1-9]|[1-9][0-9])\/(?:left|middle|right)\/(?:blue|red)\/[a-zA-Z0-9-]{12,80}$/.test(key)||/^s\/[a-zA-Z0-9-]{12,80}\/[1-6]\/(?:left|middle|right)\/(?:blue|red)\/[a-zA-Z0-9-]{12,80}$/.test(key);
   const currentRows=()=>state.entries.filter(entry=>entry.sessionId===state.sessionId);
   const penaltyCount=()=>currentRows().filter(entry=>entry.color==='red').length;
   const forcedEndReason=()=>penaltyCount()>=2?'penalties':currentRows().length>=maxRows?'rows':null;
@@ -67,6 +71,12 @@
   const save=()=>{try{localStorage.setItem(storageKey,JSON.stringify(state));return true}catch{return false}};
   const blankDraft=()=>({position:null,color:null,multiplier:null});
   const nextRow=()=>currentRows().length+1;
+  const predictionPath=()=>{
+    const rows=currentRows();
+    return rows.length<maxRows&&rows.every(entry=>validPosition(entry.position)&&validColor(entry.color))?rows.map(entry=>entry.position+'.'+entry.color).join(','):'';
+  };
+  const pathSteps=()=>currentRows().map(entry=>({position:entry.position,color:entry.color}));
+  const pathLabel=steps=>steps.map((step,index)=>`第 ${index+1} 行${placeText(step.position)}${step.color==='blue'?'蓝':'红'}`).join(' → ');
   function statsForRow(row,source='personal'){
     return positions.map(([position,label])=>{
       if(source==='shared'){
@@ -82,6 +92,37 @@
   function recommendation(stats){
     return stats.filter(item=>item.count>0).sort((a,b)=>b.rate-a.rate||b.count-a.count||positions.findIndex(([key])=>key===a.position)-positions.findIndex(([key])=>key===b.position))[0]||null;
   }
+  function personalConditional(path,mode){
+    const row=path.length+1;
+    const sessions=new Map();
+    state.entries.filter(entry=>entry.row<=maxRows&&validPosition(entry.position)&&validColor(entry.color)).forEach(entry=>{
+      const rows=sessions.get(entry.sessionId)||new Map();
+      rows.set(entry.row,entry);
+      sessions.set(entry.sessionId,rows);
+    });
+    const counts=positions.map(([position,label])=>({position,label,count:0,blue:0,rate:null}));
+    let matchedSessions=0;
+    for(const rows of sessions.values()){
+      const matches=mode==='exact'?path.every((step,index)=>rows.get(index+1)?.position===step.position&&rows.get(index+1)?.color===step.color):rows.get(row-1)?.position===path.at(-1).position&&rows.get(row-1)?.color===path.at(-1).color;
+      if(!matches)continue;
+      matchedSessions++;
+      const next=rows.get(row);
+      const item=counts.find(item=>item.position===next?.position);
+      if(item){item.count++;if(next.color==='blue')item.blue++}
+    }
+    counts.forEach(item=>item.rate=item.count?item.blue/item.count:null);
+    return {matchedSessions,stats:counts};
+  }
+  const cleanConditional=raw=>{
+    if(!raw||!Array.isArray(raw.stats)||!Number.isInteger(raw.matchedSessions))return null;
+    const stats=positions.map(([position,label])=>{
+      const item=raw.stats.find(item=>item.position===position);
+      const count=Number.isInteger(item?.count)&&item.count>=0?item.count:0;
+      const blue=Number.isInteger(item?.blue)&&item.blue>=0&&item.blue<=count?item.blue:0;
+      return {position,label,count,blue,rate:count?blue/count:null};
+    });
+    return {matchedSessions:raw.matchedSessions,stats};
+  };
   function renderCurrent(){
     const rows=currentRows();
     const t=total();
@@ -143,6 +184,8 @@
       $('predictionRowLabel').textContent='本局已结束';
       $('sharedStatus').textContent=message;
       $('recommendedPosition').textContent='暂无下一张';
+      $('recommendationScope').textContent='本局结束后不再计算下一行条件样本。';
+      $('predictionCondition').textContent='';
       $('sampleWarning').textContent='历史样本仅供参考，不能预测随机结果。';
       $('predictionReward').textContent='—';
       $('predictionPenalty').textContent='—';
@@ -152,21 +195,37 @@
     const early=row<=3;
     const source=sharedStats===null?'personal':'shared';
     const sourceLabel=source==='shared'?'全员匿名样本':'本机样本';
-    const stats=statsForRow(row,source);
-    const best=recommendation(stats);
-    const insufficient=stats.some(item=>item.count<5);
-    $('inlinePredictionRow').textContent='待选第 '+row+' 行 · '+sourceLabel+'推荐';
-    $('inlineRecommended').textContent=best?best.label+' · 历史出蓝率 '+Math.round(best.rate*100)+'%':'暂无历史推荐';
-    $('inlinePredictionSummary').textContent=stats.map(item=>item.label+' '+(item.rate===null?'—':Math.round(item.rate*100)+'%')+'（'+item.count+'条）').join(' · ')+'。'+(insufficient?'样本不足，仅供参考；':'历史样本仅供参考；')+'不能预测随机结果。';
+    const path=pathSteps();
+    const canCondition=row>1&&path.length===row-1&&path.every(step=>validPosition(step.position)&&validColor(step.color));
+    const pathKey=predictionPath();
+    const overall=statsForRow(row,source);
+    const exact=canCondition?(source==='shared'?(sharedPathLoaded===pathKey?cleanConditional(sharedConditional?.exact):null):personalConditional(path,'exact')):null;
+    const previous=canCondition&&row>2?(source==='shared'?(sharedPathLoaded===pathKey?cleanConditional(sharedConditional?.previous):null):personalConditional(path,'previous')):null;
+    const shownStats=exact?.stats||overall;
+    const sufficientlySampled=stats=>stats?.every(item=>item.count>=5);
+    let recommendationStats=null;
+    let tier='';
+    if(exact&&sufficientlySampled(exact.stats)){recommendationStats=exact.stats;tier='完整路径'}
+    else if(previous&&sufficientlySampled(previous.stats)){recommendationStats=previous.stats;tier='上一行条件'}
+    else if(sufficientlySampled(overall)){recommendationStats=overall;tier='同一行总体'}
+    const best=recommendationStats?recommendation(recommendationStats):null;
+    const insufficient=shownStats.some(item=>item.count<5);
+    const rates=shownStats.map(item=>item.label+' '+(item.rate===null?'—':Math.round(item.rate*100)+'%')+'（'+item.count+'条）').join(' · ');
+    const conditionText=canCondition?(exact?`条件：${pathLabel(path)}。匹配 ${exact.matchedSessions} 局，其中 ${exact.stats.reduce((n,item)=>n+item.count,0)} 局记录了第 ${row} 行。`:`条件：${pathLabel(path)}。正在读取可关联的历史局。`):`第 ${row} 行按位置统计全部已记录结果。`;
+    $('inlinePredictionRow').textContent='待选第 '+row+' 行 · '+sourceLabel+'条件统计';
+    $('inlineRecommended').textContent=best?best.label+' · '+tier+'出蓝率 '+Math.round(best.rate*100)+'%':'样本不足，暂不推荐';
+    $('inlinePredictionSummary').textContent=conditionText+rates+'。'+(insufficient?'样本不足，仅供参考；':'仅供参考；')+'不能预测随机结果。';
     $('predictionRowLabel').textContent='第 '+row+' 行 · '+sourceLabel;
-    $('sharedStatus').textContent=source==='shared'?'正在显示全员匿名统计。':'全员统计暂不可用，当前显示本机记录。';
+    $('sharedStatus').textContent=source==='shared'?'正在显示全员匿名统计；条件样本只计算可关联的完整本局记录。':'全员统计暂不可用，当前显示本机记录。';
+    $('predictionCondition').textContent=conditionText;
     $('predictionReward').textContent=early?'2/3':'1/3';
     $('predictionPenalty').textContent=early?'1/3':'2/3';
-    $('recommendedPosition').textContent=best?best.label+' · '+Math.round(best.rate*100)+'% 历史出蓝率':'暂无推荐';
-    $('sampleWarning').textContent=insufficient?'样本不足，仅供参考。当前行至少一个位置少于 5 条记录；即使样本增加，也不能预测随机结果。':'历史样本仅供参考；即使每个位置都有记录，也不能预测随机结果。';
+    $('recommendedPosition').textContent=best?best.label+' · '+Math.round(best.rate*100)+'% 历史出蓝率':'样本不足，暂不推荐';
+    $('recommendationScope').textContent=best?'推荐依据：'+tier+'；各位置均至少 5 条记录。':'完整路径、上一行条件和同一行总体均未达到各位置至少 5 条。';
+    $('sampleWarning').textContent=(insufficient?'样本不足，仅供参考。':'历史样本仅供参考。')+(best&&canCondition&&tier!=='完整路径'?'完整路径样本不够，推荐已退回'+tier+'。':'')+'玩家只记录自己选过的位置，历史出蓝率不能预测随机结果。';
     $('predictionCards').replaceChildren();
-    stats.forEach(item=>{
-      const card=document.createElement('div');card.className='stat-card'+(best?.position===item.position?' recommended':'');
+    shownStats.forEach(item=>{
+      const card=document.createElement('div');card.className='stat-card'+(best?.position===item.position&&(!canCondition||tier==='完整路径')?' recommended':'');
       const label=document.createElement('span');label.className='place';label.textContent=item.label;
       const rate=document.createElement('strong');rate.className='rate';rate.textContent=item.rate===null?'—':Math.round(item.rate*100)+'%';
       const sample=document.createElement('span');sample.className='sample';sample.textContent=`蓝 ${item.blue} / 样本 ${item.count}`;
@@ -214,15 +273,25 @@
     $('storageWarning').hidden=save();
   }
   async function loadShared(){
+    const path=predictionPath();
+    requestedPath=path;
+    const thisRequest=++requestNumber;
     try{
-      const response=await fetch(sharedUrl,{cache:'no-store'});
+      const response=await fetch(sharedUrl+(path?'?path='+encodeURIComponent(path):''),{cache:'no-store'});
       if(!response.ok)throw Error('unavailable');
       const body=await response.json();
       if(!Array.isArray(body.stats))throw Error('invalid stats');
+      if(thisRequest!==requestNumber||path!==predictionPath())return;
       sharedStats=body.stats.filter(item=>Number.isInteger(item.row)&&item.row>=1&&item.row<=maxRows&&validPosition(item.position)&&Number.isInteger(item.count)&&item.count>=0&&Number.isInteger(item.blue)&&item.blue>=0&&item.blue<=item.count);
-    }catch{sharedStats=null}
+      sharedConditional=body.conditional;
+      sharedPathLoaded=path;
+    }catch{
+      if(thisRequest!==requestNumber)return;
+      sharedStats=null;sharedConditional=null;sharedPathLoaded=null;
+    }
     renderPrediction();renderHistory();
   }
+  function refreshPath(){if(predictionPath()!==requestedPath)loadShared()}
   function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(syncShared,350)}
   async function syncShared(){
     if(syncing){syncQueued=true;return}
@@ -230,7 +299,7 @@
     syncing=true;
     let changed=false;
     try{
-      const desired=new Map(state.entries.filter(entry=>entry.row<=maxRows&&validPosition(entry.position)&&validColor(entry.color)&&/^[a-zA-Z0-9-]{12,80}$/.test(entry.id)).map(entry=>[entry.id,entry]));
+      const desired=new Map(state.entries.filter(entry=>entry.row<=maxRows&&validPosition(entry.position)&&validColor(entry.color)&&/^[a-zA-Z0-9-]{12,80}$/.test(entry.id)&&/^[a-zA-Z0-9-]{12,80}$/.test(entry.sessionId)).map(entry=>[entry.id,entry]));
       for(const [id,oldKey] of Object.entries(syncMap)){
         if(!validSharedKey(oldKey)){delete syncMap[id];continue}
         if(desired.has(id))continue;
@@ -241,7 +310,7 @@
       for(const [id,entry] of desired){
         const key=sharedKey(entry);
         if(syncMap[id]===key)continue;
-        const response=await fetch(sharedUrl,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,row:entry.row,position:entry.position,color:entry.color,previousKey:validSharedKey(syncMap[id])?syncMap[id]:undefined})});
+        const response=await fetch(sharedUrl,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,sessionId:entry.sessionId,row:entry.row,position:entry.position,color:entry.color,previousKey:validSharedKey(syncMap[id])?syncMap[id]:undefined})});
         if(!response.ok)throw Error('upload failed');
         syncMap[id]=key;changed=true;localStorage.setItem(syncKey,JSON.stringify(syncMap));
       }
@@ -259,6 +328,7 @@
     }
     if(forcedEndReason())state.stopped=true;
     render();
+    refreshPath();
     scheduleSync();
   }
   document.querySelectorAll('[data-position]').forEach(button=>button.addEventListener('click',()=>choose('position',button.dataset.position)));
@@ -282,9 +352,9 @@
   $('undoBtn').addEventListener('click',()=>{
     const entry=lastCurrent();if(!entry)return;
     state.entries.splice(state.entries.findIndex(item=>item.id===entry.id),1);
-    state.awaiting=false;state.stopped=Boolean(forcedEndReason());state.draft=blankDraft();render();scheduleSync();
+    state.awaiting=false;state.stopped=Boolean(forcedEndReason());state.draft=blankDraft();render();refreshPath();scheduleSync();
   });
-  $('resetBtn').addEventListener('click',()=>{state.sessionId=newId();state.awaiting=false;state.stopped=false;state.draft=blankDraft();render()});
+  $('resetBtn').addEventListener('click',()=>{state.sessionId=newId();state.awaiting=false;state.stopped=false;state.draft=blankDraft();render();refreshPath()});
   $('showMoreHistory').addEventListener('click',()=>{visibleHistory+=30;renderHistory()});
   $('openPrediction').addEventListener('click',()=>{$('tab-prediction').click();window.scrollTo(0,0)});
   document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{

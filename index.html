@@ -203,10 +203,11 @@
       <div class="panel">
         <div class="panel-head"><div><h2>下一张预测</h2><p id="predictionRowLabel">统计第 1 行的历史选择</p></div><span class="step-pill">仅看历史</span></div>
         <p class="field-hint" id="sharedStatus">正在读取全员匿名样本…</p>
-        <div class="recommendation"><span>历史样本推荐位置</span><strong id="recommendedPosition">暂无推荐</strong></div>
+        <div class="recommendation"><span>历史样本推荐位置</span><strong id="recommendedPosition">暂无推荐</strong><p id="recommendationScope" class="field-hint">正在核对条件样本。</p></div>
+        <p id="predictionCondition" class="field-hint">按当前本局路径统计下一行。</p>
         <div class="stat-cards" id="predictionCards"></div>
         <p class="sample-warning" id="sampleWarning">样本不足，仅供参考。</p>
-        <p class="disclaimer">此推荐只按同一行、同一位置的历史出蓝率排序，不能预测随机翻牌结果。玩家只记录自己选过的位置，且匿名数据可能重复或填错，样本有偏差。</p>
+        <p class="disclaimer">优先比较相同翻牌路径下的下一行；样本不够时退回上一行条件或该行总体。玩家只记录自己选过的位置，匿名数据也可能重复或填错，历史频率不能预测随机翻牌结果。</p>
       </div>
       <div class="panel"><div class="panel-head"><div><h2>该行固定牌色比例</h2><p>与历史统计分开看</p></div></div>
         <div class="probability"><div class="reward"><span>蓝牌 · 奖励</span><strong id="predictionReward">2/3</strong></div><div class="penalty"><span>红牌 · 惩罚</span><strong id="predictionPenalty">1/3</strong></div></div>
@@ -225,13 +226,13 @@
     <section id="view-history" class="view" role="tabpanel" aria-labelledby="tab-history">
       <div class="panel"><div class="panel-head"><div><h2>全员匿名统计</h2><p id="sharedHistoryStatus">正在读取全员样本…</p></div><span class="step-pill" id="sharedTotal">—</span></div>
         <div id="sharedRows"></div>
-        <p class="disclaimer">仅上传行数、左中右位置和蓝红结果；不上传果子价值、倍率或账号。记录可能重复或填错，只能作为历史参考。</p>
+        <p class="disclaimer">匿名上传本局随机标识、行数、左中右位置和蓝红结果，用来统计连续翻牌路径；不上传果子价值、倍率或账号。记录可能重复或填错，只能作为历史参考。</p>
       </div>
       <div class="panel"><div class="panel-head"><div><h2>我的历史统计</h2><p>本设备保存的翻牌记录</p></div></div>
         <div class="mini-stats"><div><strong id="totalRecords">0</strong><span>有效选择</span></div><div><strong id="blueRecords">0</strong><span>蓝牌</span></div><div><strong id="sessionCount">0</strong><span>已记录局数</span></div></div>
         <p class="field-hint">重置本局会保留历史统计；撤销上一条会移除那条记录。</p>
       </div>
-      <div class="panel"><div class="panel-head"><div><h2>我的各行位置统计</h2><p>仅计算有位置和牌色的记录</p></div></div><div id="historyRows"></div></div>
+      <div class="panel"><div class="panel-head"><div><h2>我的各行位置统计</h2><p>这里是单行总体；路径条件请看“下一张预测”</p></div></div><div id="historyRows"></div></div>
       <div class="panel"><div class="panel-head"><div><h2>我的逐条记录</h2><p>按时间由近到远</p></div></div><div id="historyList"></div><button id="showMoreHistory" class="small-button" type="button" hidden style="margin-top:10px">查看更多</button></div>
     </section>
     <footer class="footer">菠萝岛鉴定助手 · 本机历史保留在设备上 · 匿名翻牌结果参与全员统计 · 仅做风险参考</footer>

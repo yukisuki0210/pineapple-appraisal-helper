@@ -115,8 +115,8 @@ try{
   check(result.second.join('|')==='×0.600|1.5万',`Second row: ${JSON.stringify(result.second)}`);
   check(result.third.join('|')==='×1.200|1/3|2/3',`Fourth-row risk: ${JSON.stringify(result.third)}`);
   check(result.undone==='×0.600'&&result.trialRemoved,'Undo or trial removal failed');
-  check(result.inline[0].includes('第 1 行')&&result.inline[1].includes('左')&&result.inline[2].includes('样本不足')&&result.inlineLinkOpened,'Inline recommendation failed');
-  check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('左')&&result.prediction[2].includes('样本不足')&&result.prediction[3].includes('样本 1'),'Historical recommendation failed');
+  check(result.inline[0].includes('第 1 行')&&result.inline[1].includes('样本不足')&&result.inline[2].includes('样本不足')&&result.inlineLinkOpened,'Inline sample warning failed');
+  check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('样本不足')&&result.prediction[2].includes('样本不足')&&result.prediction[3].includes('样本 1'),'Historical sample warning failed');
   check(result.history[0]==='2'&&result.history[1]==='1'&&result.history[2]==='1'&&result.history[3].includes('右')&&result.storedCount===2,'Historical storage failed');
   await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   const currentCapture=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
@@ -130,7 +130,7 @@ try{
   await cdp('Page.navigate',{url:targetUrl});
   for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
   const persisted=await evaluate("({total:document.getElementById('totalMultiplier').textContent,count:document.getElementById('totalRecords').textContent,recommendation:document.getElementById('recommendedPosition').textContent,base:document.getElementById('baseValue').value,unit:document.getElementById('baseUnit').value,payout:document.getElementById('currentPayout').textContent})");
-  check(persisted.total==='×1.000'&&persisted.count==='2'&&persisted.recommendation.includes('左')&&persisted.base==='2.5'&&persisted.unit==='wan'&&persisted.payout==='2.5万','History or base value did not persist after reload');
+  check(persisted.total==='×1.000'&&persisted.count==='2'&&persisted.recommendation.includes('样本不足')&&persisted.base==='2.5'&&persisted.unit==='wan'&&persisted.payout==='2.5万','History or base value did not persist after reload');
   console.log('Position/color/factor recording, payout, row rules, undo, reset, prediction, and reload persistence: passed');
   const limit=await evaluate(`(()=>{
     const el=id=>document.getElementById(id);
@@ -210,7 +210,37 @@ try{
   const migration=await evaluate("({total:document.getElementById('totalMultiplier').textContent,base:document.getElementById('baseValue').value,unit:document.getElementById('baseUnit').value,payout:document.getElementById('currentPayout').textContent,records:document.getElementById('totalRecords').textContent,history:document.getElementById('historyList').textContent})");
   check(migration.total==='×0.600'&&migration.base==='1000'&&migration.unit==='yuan'&&migration.payout==='600元'&&migration.records==='0'&&migration.history.includes('旧版未记录'),'Legacy data migration failed');
   console.log('V1 multiplier history migration without invented position/color: passed');
+  await evaluate(`(()=>{
+    const entries=[];
+    const add=(sessionId,row,position,color)=>entries.push({id:sessionId+'-row-'+row,sessionId,row,position,color,multiplier:1,at:Date.now()});
+    for(const position of ['left','middle','right'])for(let i=0;i<5;i++){
+      const sessionId='matching-'+position+'-'+i+'-1234567890';
+      add(sessionId,1,'left','blue');
+      add(sessionId,2,position,position==='middle'?i<4?'blue':'red':position==='left'?i===0?'blue':'red':i<2?'blue':'red');
+    }
+    for(const position of ['left','middle'])for(let i=0;i<5;i++){
+      const sessionId='other-'+position+'-'+i+'-1234567890';
+      add(sessionId,1,'right','blue');add(sessionId,2,position,position==='left'?'blue':'red');
+    }
+    const sessionId='current-path-1234567890';
+    add(sessionId,1,'left','blue');
+    localStorage.setItem('pineapple-appraisal-helper-v2',JSON.stringify({version:2,sessionId,entries,awaiting:true,stopped:false,base:'',baseUnit:'yuan',draft:{position:'left',color:'blue',multiplier:1}}));
+    return true;
+  })()`);
+  await cdp('Page.navigate',{url:targetUrl});
+  for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
+  const conditional=await evaluate(`(()=>{
+    const el=id=>document.getElementById(id);
+    const exact={condition:el('predictionCondition').textContent,recommendation:el('recommendedPosition').textContent,scope:el('recommendationScope').textContent,cards:el('predictionCards').textContent};
+    document.querySelector('[data-position="right"]').click();
+    const fallback={recommendation:el('recommendedPosition').textContent,scope:el('recommendationScope').textContent};
+    return {exact,fallback};
+  })()`);
+  check(conditional.exact.condition.includes('第 1 行左蓝')&&conditional.exact.recommendation.includes('中')&&conditional.exact.scope.includes('完整路径')&&conditional.exact.cards.includes('80%'),'Conditional next-row rates or recommendation failed');
+  check(conditional.fallback.recommendation.includes('左')&&conditional.fallback.scope.includes('同一行总体'),'Sparse-path fallback was not labeled or selected correctly');
+  console.log('Conditional path rates, position recommendation, and labeled fallback: passed');
 }finally{
-  socket?.close();browser.kill();server.close();
+  socket?.close();browser.kill();server.close();server.closeAllConnections();
   await sleep(200);await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:200}).catch(()=>{});
 }
+process.exit(0);
