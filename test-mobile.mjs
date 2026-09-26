@@ -67,11 +67,15 @@ try{
   const result=await evaluate(`(()=>{
     const el=id=>document.getElementById(id);
     const baseFirst=!!(el('baseValue').compareDocumentPosition(el('totalMultiplier'))&Node.DOCUMENT_POSITION_FOLLOWING);
-    el('baseValue').value='2.5';el('baseValue').dispatchEvent(new Event('input'));
+    el('baseValue').value='2500';el('baseValue').dispatchEvent(new Event('input'));
     document.querySelector('[data-position="left"]').click();
     document.querySelector('[data-color="blue"]').click();
     document.querySelector('[data-value="1.2"]').click();
     const first=[el('totalMultiplier').textContent,el('currentPayout').textContent,el('rewardProbability').textContent];
+    el('baseUnit').value='wan';el('baseUnit').dispatchEvent(new Event('change'));
+    const converted=[el('baseValue').value,el('currentPayout').textContent];
+    el('baseValue').value='2.5';el('baseValue').dispatchEvent(new Event('input'));
+    const firstWan=el('currentPayout').textContent;
     document.querySelector('[data-position="middle"]').click();
     document.querySelector('[data-color="red"]').click();
     document.querySelector('[data-value="0.7"]').click();
@@ -100,18 +104,17 @@ try{
     document.getElementById('tab-history').click();
     const history=[el('totalRecords').textContent,el('blueRecords').textContent,el('sessionCount').textContent,el('historyList').textContent];
     document.getElementById('tab-current').click();
-    el('trialBase').value='2.5';el('trialBase').dispatchEvent(new Event('input'));
-    el('trialMultiplier').value='2';el('trialMultiplier').dispatchEvent(new Event('input'));
-    const trial=el('trialPayout').textContent;
+    const trialRemoved=!el('trialBase')&&!el('trialMultiplier')&&!el('trialPayout');
     const stored=JSON.parse(localStorage.getItem('pineapple-appraisal-helper-v2'));
-    return {baseFirst,first,edit,second,third,undone,inline,inlineLinkOpened,prediction,history,trial,storedCount:stored.entries.length,baseUnit:stored.baseUnit};
+    return {baseFirst,first,converted,firstWan,edit,second,third,undone,inline,inlineLinkOpened,prediction,history,trialRemoved,storedCount:stored.entries.length,baseUnit:stored.baseUnit};
   })()`);
   check(result.baseFirst&&result.baseUnit==='wan','Base-value placement or unit failed');
-  check(result.first.join('|')==='×1.200|3万|2/3',`First row: ${JSON.stringify(result.first)}`);
+  check(result.first.join('|')==='×1.200|3,000元|2/3',`First row: ${JSON.stringify(result.first)}`);
+  check(result.converted.join('|')==='0.25|3,000元'&&result.firstWan==='3万','Yuan/wan conversion changed the value');
   check(result.edit.join('|')==='1|middle|red|0.7',`Editing a recorded row: ${JSON.stringify(result.edit)}`);
   check(result.second.join('|')==='×0.600|1.5万',`Second row: ${JSON.stringify(result.second)}`);
   check(result.third.join('|')==='×1.200|1/3|2/3',`Fourth-row risk: ${JSON.stringify(result.third)}`);
-  check(result.undone==='×0.600'&&result.trial==='5万','Undo or trial failed');
+  check(result.undone==='×0.600'&&result.trialRemoved,'Undo or trial removal failed');
   check(result.inline[0].includes('第 1 行')&&result.inline[1].includes('左')&&result.inline[2].includes('样本不足')&&result.inlineLinkOpened,'Inline recommendation failed');
   check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('左')&&result.prediction[2].includes('样本不足')&&result.prediction[3].includes('样本 1'),'Historical recommendation failed');
   check(result.history[0]==='2'&&result.history[1]==='1'&&result.history[2]==='1'&&result.history[3].includes('右')&&result.storedCount===2,'Historical storage failed');
@@ -126,8 +129,8 @@ try{
   }
   await cdp('Page.navigate',{url:targetUrl});
   for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
-  const persisted=await evaluate("({total:document.getElementById('totalMultiplier').textContent,count:document.getElementById('totalRecords').textContent,recommendation:document.getElementById('recommendedPosition').textContent})");
-  check(persisted.total==='×1.000'&&persisted.count==='2'&&persisted.recommendation.includes('左'),'History did not persist after reload');
+  const persisted=await evaluate("({total:document.getElementById('totalMultiplier').textContent,count:document.getElementById('totalRecords').textContent,recommendation:document.getElementById('recommendedPosition').textContent,base:document.getElementById('baseValue').value,unit:document.getElementById('baseUnit').value,payout:document.getElementById('currentPayout').textContent})");
+  check(persisted.total==='×1.000'&&persisted.count==='2'&&persisted.recommendation.includes('左')&&persisted.base==='2.5'&&persisted.unit==='wan'&&persisted.payout==='2.5万','History or base value did not persist after reload');
   console.log('Position/color/factor recording, payout, row rules, undo, reset, prediction, and reload persistence: passed');
   const manifest=await (await fetch(new URL('manifest.webmanifest',targetUrl))).json();
   check(manifest.display==='standalone'&&manifest.icons.length===2,'PWA manifest invalid');
@@ -151,8 +154,8 @@ try{
   await evaluate("(()=>{localStorage.removeItem('pineapple-appraisal-helper-v2');localStorage.setItem('pineapple-appraisal-helper-v1',JSON.stringify({rows:[1.2,0.5],awaiting:true,stopped:false,base:'1000'}));return true})()");
   await cdp('Page.navigate',{url:targetUrl});
   for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
-  const migration=await evaluate("({total:document.getElementById('totalMultiplier').textContent,base:document.getElementById('baseValue').value,payout:document.getElementById('currentPayout').textContent,records:document.getElementById('totalRecords').textContent,history:document.getElementById('historyList').textContent})");
-  check(migration.total==='×0.600'&&migration.base==='0.1'&&migration.payout==='0.06万'&&migration.records==='0'&&migration.history.includes('旧版未记录'),'Legacy data migration failed');
+  const migration=await evaluate("({total:document.getElementById('totalMultiplier').textContent,base:document.getElementById('baseValue').value,unit:document.getElementById('baseUnit').value,payout:document.getElementById('currentPayout').textContent,records:document.getElementById('totalRecords').textContent,history:document.getElementById('historyList').textContent})");
+  check(migration.total==='×0.600'&&migration.base==='1000'&&migration.unit==='yuan'&&migration.payout==='600元'&&migration.records==='0'&&migration.history.includes('旧版未记录'),'Legacy data migration failed');
   console.log('V1 multiplier history migration without invented position/color: passed');
 }finally{
   socket?.close();browser.kill();server.close();

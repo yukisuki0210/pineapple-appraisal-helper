@@ -17,7 +17,7 @@
     *{box-sizing:border-box}
     html{-webkit-text-size-adjust:100%}
     body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
-    button,input{font:inherit}
+    button,input,select{font:inherit}
     button{cursor:pointer;touch-action:manipulation}
     .app{max-width:480px;min-height:100dvh;margin:auto;padding:calc(16px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
     .hero{padding:2px 2px 15px}
@@ -46,8 +46,8 @@
     .base-panel{padding:13px 16px;margin-top:0}
     .base-panel .field-hint{margin-top:6px}
     .unit-input{position:relative}
-    .unit-input .value-input{padding-right:42px}
-    .unit-input .unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:14px;font-weight:800;pointer-events:none}
+    .unit-input .value-input{padding-right:82px}
+    .unit-select{position:absolute;right:4px;top:4px;height:38px;min-width:68px;border:0;border-left:1px solid var(--line);border-radius:0 9px 9px 0;background:#fff;color:var(--gold);font-size:14px;font-weight:800;padding-left:12px;outline:none}
     .field-label{display:block;font-size:12px;font-weight:700;margin:0 0 7px;color:#5e564a}
     .field-hint{font-size:11px;color:var(--muted);margin:7px 0 0;line-height:1.5}
     .selection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -83,13 +83,6 @@
     .strategy-card .red-word{color:var(--red);font-weight:800}
     .strategy-card .blue-word{color:var(--blue);font-weight:800}
     .disclaimer{background:#f1ede4;color:#736a5d;border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.55;margin:10px 0 0}
-    .trial-result{background:var(--gold-light);border-radius:14px;padding:15px;margin:13px 0}
-    .trial-result span{font-size:11px;color:#725d3b}
-    .trial-result strong{display:block;font-size:30px;margin-top:3px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-    .trial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .trial-option{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px;text-align:left;min-width:0}
-    .trial-option b{display:block;font-size:17px;color:var(--gold);margin-bottom:3px}
-    .trial-option span{display:block;color:var(--muted);font-size:11px;overflow-wrap:anywhere}
     .choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .color-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .choice-btn{min-height:47px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:15px;font-weight:800;color:var(--ink)}
@@ -155,8 +148,8 @@
     <section id="view-current" class="view active" role="tabpanel" aria-labelledby="tab-current">
       <div class="panel base-panel">
         <label class="field-label" for="baseValue">收益基础 · 果子价值</label>
-        <div class="unit-input"><input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 2.5"><span class="unit">万</span></div>
-        <p class="field-hint">输入 2.5 即 2.5 万；预计收益也按“万”显示。</p>
+        <div class="unit-input"><input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 2500"><select id="baseUnit" class="unit-select" aria-label="果子价值单位"><option value="yuan">元</option><option value="wan">万</option></select></div>
+        <p class="field-hint">可输入 2500 元或切换单位输入 2.5 万；切换时金额会自动换算。</p>
       </div>
       <div class="panel hero-card">
         <span class="overline">当前总倍率</span>
@@ -204,15 +197,6 @@
         <div id="stoppedMessage" class="stopped" hidden></div>
         <p class="disclaimer">仅做风险参考。固定牌色比例不等于盈利概率。</p>
       </div>
-      <details class="panel details-panel"><summary>收益试算 · 其他倍率</summary><div class="details-body">
-        <label class="field-label" for="trialBase">果子基础价值</label><div class="unit-input"><input id="trialBase" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="例如 2.5"><span class="unit">万</span></div>
-        <div style="height:13px"></div>
-        <label class="field-label" for="trialMultiplier">当前总倍率</label><input id="trialMultiplier" class="value-input" type="number" min="0.01" max="1000000" step="any" inputmode="decimal" value="1">
-        <button id="useCurrent" class="small-button" type="button" style="height:36px;margin-top:9px">带入本局</button>
-        <div class="trial-result"><span>现在收手预计收益</span><strong id="trialPayout">—</strong></div>
-        <div class="field-label">假设下一次翻出</div><div class="trial-grid" id="trialGrid"></div>
-        <p class="disclaimer">仅为倍率算术试算，不包含具体倍率的出现概率或下注成本。</p>
-      </div></details>
     </section>
 
     <section id="view-prediction" class="view" role="tabpanel" aria-labelledby="tab-prediction">

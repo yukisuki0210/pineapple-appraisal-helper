@@ -13,7 +13,8 @@
   const saved=read(storageKey);
   const old=read('pineapple-appraisal-helper-v1');
   const previousBase=saved?.base??old?.base??'';
-  const baseInWan=previousBase===''?'':saved?.baseUnit==='wan'?String(previousBase):Number.isFinite(Number(previousBase))?String(Number(previousBase)/10000):'';
+  const savedBase=previousBase===''?'':Number.isFinite(Number(previousBase))?String(previousBase):'';
+  const savedUnit=saved?.baseUnit==='wan'?'wan':'yuan';
   const sessionId=typeof saved?.sessionId==='string'?saved.sessionId:newId();
   const migrated=Array.isArray(old?.rows)?old.rows.filter(validFactor).slice(0,99).map((factor,index)=>({
     id:newId(),sessionId,row:index+1,position:null,color:null,multiplier:Number(factor),at:Date.now()
@@ -30,7 +31,7 @@
     version:2,sessionId,entries,
     awaiting:Boolean(saved?.awaiting??old?.awaiting),
     stopped:Boolean(saved?.stopped??old?.stopped),
-    base:baseInWan,baseUnit:'wan',
+    base:savedBase,baseUnit:savedUnit,
     draft:{
       position:validPosition(saved?.draft?.position)?saved.draft.position:null,
       color:validColor(saved?.draft?.color)?saved.draft.color:null,
@@ -50,10 +51,12 @@
   if(!currentRows().length)state.awaiting=false;
   if(state.awaiting){const last=lastCurrent();state.draft={position:last.position,color:last.color,multiplier:last.multiplier}}
   $('baseValue').value=state.base;
+  $('baseUnit').value=state.baseUnit;
   let visibleHistory=30;
   const validBase=value=>value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;
   const total=()=>currentRows().reduce((product,entry)=>product*entry.multiplier,1);
-  const wanMoney=value=>Number.isFinite(value)?new Intl.NumberFormat('zh-CN',{maximumFractionDigits:6}).format(value)+'万':'—';
+  const baseYuan=()=>Number(state.base)*(state.baseUnit==='wan'?10000:1);
+  const money=value=>Number.isFinite(value)?Math.abs(value)>=10000?new Intl.NumberFormat('zh-CN',{maximumFractionDigits:6}).format(value/10000)+'万':new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2}).format(value)+'元':'—';
   const factorText=value=>new Intl.NumberFormat('zh-CN',{minimumFractionDigits:3,maximumFractionDigits:3}).format(value);
   const placeText=value=>positions.find(([key])=>key===value)?.[1]||'旧版未记录';
   const colorText=value=>value==='blue'?'蓝牌':value==='red'?'红牌':'牌色未记录';
@@ -83,7 +86,7 @@
     const early=upcoming<=3;
     $('totalMultiplier').textContent='×'+factorText(t);
     $('revealedCount').textContent=rows.length+' 行';
-    $('currentPayout').textContent=validBase(state.base)?wanMoney(Number(state.base)*t):'—';
+    $('currentPayout').textContent=validBase(state.base)?money(baseYuan()*t):'—';
     $('rowPill').textContent=state.stopped?'已收手':'第 '+current+' 行';
     $('rowInstruction').textContent=state.stopped?'本局已结束；重置可开始新局':state.awaiting?'第 '+current+' 行已记录，可调整本行或继续':'依次选择第 '+current+' 行的位置、牌色和倍率';
     $('nextRowLabel').textContent=state.stopped?'本局已结束':'下一张：第 '+upcoming+' 行';
@@ -98,7 +101,7 @@
     $('addCustom').disabled=state.stopped||(!state.awaiting&&rows.length>=99);
     $('customMultiplier').disabled=state.stopped||(!state.awaiting&&rows.length>=99);
     $('stoppedMessage').hidden=!state.stopped;
-    if(state.stopped)$('stoppedMessage').textContent='已收手 · '+rows.length+' 行 · 总倍率 ×'+factorText(t)+(validBase(state.base)?' · 预计收益 '+wanMoney(Number(state.base)*t):'。输入基础价值可查看收益。');
+    if(state.stopped)$('stoppedMessage').textContent='已收手 · '+rows.length+' 行 · 总倍率 ×'+factorText(t)+(validBase(state.base)?' · 预计收益 '+money(baseYuan()*t):'。输入基础价值可查看收益。');
     document.querySelectorAll('[data-position]').forEach(button=>{
       button.disabled=state.stopped||(!state.awaiting&&rows.length>=99);
       button.classList.toggle('selected',button.dataset.position===state.draft.position);
@@ -246,6 +249,12 @@
   $('addCustom').addEventListener('click',()=>{const value=$('customMultiplier').value;if(validFactor(value)){choose('multiplier',Number(value));$('customMultiplier').value=''}else $('customMultiplier').reportValidity()});
   $('customMultiplier').addEventListener('keydown',event=>{if(event.key==='Enter')$('addCustom').click()});
   $('baseValue').addEventListener('input',()=>{state.base=$('baseValue').value;render()});
+  $('baseUnit').addEventListener('change',()=>{
+    if(validBase(state.base))state.base=String(state.baseUnit==='wan'?Number(state.base)*10000:Number(state.base)/10000);
+    state.baseUnit=$('baseUnit').value;
+    $('baseValue').value=state.base;
+    render();
+  });
   $('continueBtn').addEventListener('click',()=>{if(state.awaiting&&!state.stopped){state.awaiting=false;state.draft=blankDraft();render()}});
   $('stopBtn').addEventListener('click',()=>{state.stopped=true;render()});
   $('undoBtn').addEventListener('click',()=>{
@@ -260,22 +269,7 @@
     document.querySelectorAll('.tab').forEach(other=>other.setAttribute('aria-selected',String(other===tab)));
     document.querySelectorAll('.view').forEach(view=>view.classList.toggle('active',view.id==='view-'+tab.dataset.view));
   }));
-  function trial(){
-    const base=$('trialBase').value;
-    const current=Number($('trialMultiplier').value);
-    const valid=validBase(base)&&Number.isFinite(current)&&current>0&&current<=1000000;
-    $('trialPayout').textContent=valid?wanMoney(Number(base)*current):'—';
-    $('trialGrid').replaceChildren();
-    choices.forEach(n=>{
-      const button=document.createElement('button');button.type='button';button.className='trial-option';
-      const heading=document.createElement('b');heading.textContent='×'+n.toFixed(1);
-      const value=document.createElement('span');value.textContent=valid?'总倍率 ×'+factorText(current*n)+' · 收益 '+wanMoney(Number(base)*current*n):'输入基础价值查看';
-      button.append(heading,value);button.addEventListener('click',()=>{$('trialMultiplier').value=Number.isFinite(current)&&current>0?String(current*n):String(n);trial()});$('trialGrid').append(button);
-    });
-  }
-  ['trialBase','trialMultiplier'].forEach(id=>$(id).addEventListener('input',trial));
-  $('useCurrent').addEventListener('click',()=>{$('trialBase').value=state.base;$('trialMultiplier').value=String(total());trial()});
-  render();trial();loadShared();scheduleSync();
+  render();loadShared();scheduleSync();
   window.addEventListener('online',()=>{loadShared();scheduleSync()});
   if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 })();
