@@ -33,7 +33,6 @@
     awaiting:Boolean(saved?.awaiting??old?.awaiting),
     stopped:Boolean(saved?.stopped??old?.stopped),
     base:savedBase,baseUnit:savedUnit,
-    safeLimit:[1,2,3].includes(Number(saved?.safeLimit))?Number(saved.safeLimit):1,
     draft:{
       position:validPosition(saved?.draft?.position)?saved.draft.position:null,
       color:validColor(saved?.draft?.color)?saved.draft.color:null,
@@ -61,7 +60,6 @@
   if(state.awaiting){const last=lastCurrent();state.draft={position:last.position,color:last.color,multiplier:last.multiplier}}
   $('baseValue').value=state.base;
   $('baseUnit').value=state.baseUnit;
-  $('safeLimit').value=String(state.safeLimit);
   let visibleHistory=30;
   const validBase=value=>value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;
   const total=()=>currentRows().reduce((product,entry)=>product*entry.multiplier,1);
@@ -129,35 +127,6 @@
     });
     return {matchedSessions:raw.matchedSessions,stats};
   };
-  function renderSafety(){
-    const rows=currentRows();
-    const red=penaltyCount();
-    const next=rows.length+1;
-    const action=$('safeAction');
-    action.className='safety-action';
-    if(state.stopped){
-      action.textContent='本局已结束';
-      action.classList.add('ended');
-      $('safeReason').textContent='重置本局后，按选定的行数重新提示。';
-    }else if(red>=1){
-      action.textContent='建议现在收手';
-      action.classList.add('stop');
-      $('safeReason').textContent='本局已踩到 1 张红牌；再踩到第 2 张会强制结束。少踩红模式不建议继续翻。';
-    }else if(rows.length>=state.safeLimit){
-      action.textContent='已到设定行数，建议收手';
-      action.classList.add('stop');
-      $('safeReason').textContent='继续翻会增加遇红机会；第 4 行以后单次红牌比例还会上升到 2/3。';
-    }else if(state.awaiting){
-      action.textContent='可以继续到第 '+next+' 行';
-      $('safeReason').textContent='这是你主动设定的上限；下一次翻牌仍有 1/3 的红牌比例。';
-    }else{
-      action.textContent='先翻第 '+next+' 行';
-      $('safeReason').textContent='本行任一位置的已知红牌比例为 '+(next<=3?'1/3':'2/3')+'。翻完后会按你的上限提醒收手。';
-    }
-    const shouldStop=!state.stopped&&(red>=1||rows.length>=state.safeLimit);
-    $('stopBtn').textContent=shouldStop?'按计划收手':'立即收手';
-    $('continueBtn').textContent=shouldStop?'仍要继续':'继续鉴定';
-  }
   function renderCurrent(){
     const rows=currentRows();
     const t=total();
@@ -248,10 +217,9 @@
     const missing=shownStats.filter(item=>item.count<5).map(item=>item.label);
     const rates=shownStats.map(item=>item.label+' '+(item.rate===null?'—':Math.round(item.rate*100)+'%')+'（'+item.count+'条）').join(' · ');
     const conditionText=canCondition?(exact?`条件：${pathLabel(path)}。匹配 ${exact.matchedSessions} 局，其中 ${exact.stats.reduce((n,item)=>n+item.count,0)} 局记录了第 ${row} 行。`:`条件：${pathLabel(path)}。正在读取可关联的历史局。`):`第 ${row} 行按位置统计全部已记录结果。`;
-    const safetyStop=penaltyCount()>=1||currentRows().length>=state.safeLimit;
-    $('inlinePredictionRow').textContent=safetyStop?'少踩红模式 · 下一行建议':'待选第 '+row+' 行 · '+sourceLabel+'条件统计';
-    $('inlineRecommended').textContent=safetyStop?'建议现在收手':best?best.label+' · '+tier+'出蓝率 '+Math.round(best.rate*100)+'%':'样本不足，暂不推荐';
-    $('inlinePredictionSummary').textContent=safetyStop?'继续翻会增加一局碰红的机会。若仍想看左中右历史样本，可点“查看依据”；它不能预测牌的位置。':conditionText+(best?'下列蓝率与推荐均依据'+tier+'。':'')+rates+'。'+(insufficient?'部分位置样本不足；':'')+'不能预测随机结果。';
+    $('inlinePredictionRow').textContent='待选第 '+row+' 行 · '+sourceLabel+'条件统计';
+    $('inlineRecommended').textContent=best?best.label+' · '+tier+'出蓝率 '+Math.round(best.rate*100)+'%':'样本不足，暂不推荐';
+    $('inlinePredictionSummary').textContent=conditionText+(best?'下列蓝率与推荐均依据'+tier+'。':'')+rates+'。'+(insufficient?'部分位置样本不足；':'')+'不能预测随机结果。';
     $('predictionRowLabel').textContent='第 '+row+' 行 · '+sourceLabel;
     $('sharedStatus').textContent=source==='shared'?'正在显示全员匿名统计；条件样本只计算可关联的完整本局记录。':'全员统计暂不可用，当前显示本机记录。';
     $('predictionCondition').textContent=conditionText+(canCondition&&tier&&tier!=='完整路径'?'下方卡片和推荐均显示'+tier+'样本。':'');
@@ -306,7 +274,7 @@
     $('showMoreHistory').hidden=state.entries.length<=visibleHistory;
   }
   function render(){
-    renderSafety();renderCurrent();renderPrediction();renderHistory();
+    renderCurrent();renderPrediction();renderHistory();
     $('storageWarning').hidden=save();
   }
   async function loadShared(){
@@ -384,7 +352,6 @@
     $('baseValue').value=state.base;
     render();
   });
-  $('safeLimit').addEventListener('change',()=>{state.safeLimit=Number($('safeLimit').value);render()});
   $('continueBtn').addEventListener('click',()=>{if(state.awaiting&&!state.stopped){state.awaiting=false;state.draft=blankDraft();render()}});
   $('stopBtn').addEventListener('click',()=>{state.stopped=true;render()});
   $('undoBtn').addEventListener('click',()=>{
