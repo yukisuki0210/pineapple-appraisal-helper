@@ -24,6 +24,8 @@ response=await call('GET');
 assert.deepEqual((await response.json()).stats,[{row:4,position:'middle',blue:0,count:1}]);
 response=await call('POST',{id,row:100,position:'middle',color:'red'});
 assert.equal(response.status,400);
+response=await call('POST',{id,row:7,position:'middle',color:'red'});
+assert.equal(response.status,400,'seventh-row records are invalid');
 response=await call('DELETE',{key:`r/4/middle/red/${id}`});
 assert.equal(response.status,200);
 response=await call('GET');

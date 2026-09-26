@@ -132,6 +132,23 @@ try{
   const persisted=await evaluate("({total:document.getElementById('totalMultiplier').textContent,count:document.getElementById('totalRecords').textContent,recommendation:document.getElementById('recommendedPosition').textContent,base:document.getElementById('baseValue').value,unit:document.getElementById('baseUnit').value,payout:document.getElementById('currentPayout').textContent})");
   check(persisted.total==='×1.000'&&persisted.count==='2'&&persisted.recommendation.includes('左')&&persisted.base==='2.5'&&persisted.unit==='wan'&&persisted.payout==='2.5万','History or base value did not persist after reload');
   console.log('Position/color/factor recording, payout, row rules, undo, reset, prediction, and reload persistence: passed');
+  const limit=await evaluate(`(()=>{
+    const el=id=>document.getElementById(id);
+    for(let row=1;row<=6;row++){
+      document.querySelector('[data-position="left"]').click();
+      document.querySelector('[data-color="blue"]').click();
+      document.querySelector('[data-value="1.2"]').click();
+      if(row<6)el('continueBtn').click();
+    }
+    const ended={count:el('history').children.length,continueDisabled:el('continueBtn').disabled,positionDisabled:document.querySelector('[data-position="left"]').disabled,row:el('rowPill').textContent,next:el('predictionRowLabel').textContent,reward:el('rewardProbability').textContent};
+    el('continueBtn').click();document.querySelector('[data-position="right"]').click();
+    ended.afterExtraAttempt=el('history').children.length;
+    el('undoBtn').click();
+    ended.afterUndo={count:el('history').children.length,row:el('rowPill').textContent,positionEnabled:!document.querySelector('[data-position="left"]').disabled};
+    return ended;
+  })()`);
+  check(limit.count===6&&limit.continueDisabled&&limit.positionDisabled&&limit.row.includes('第 6 行')&&limit.next==='本局已结束'&&limit.reward==='—'&&limit.afterExtraAttempt===6&&limit.afterUndo.count===5&&limit.afterUndo.row==='第 6 行'&&limit.afterUndo.positionEnabled,'Six-row forced finish or undo failed');
+  console.log('Six-row limit, forced finish, no seventh row, and undo: passed');
   const manifest=await (await fetch(new URL('manifest.webmanifest',targetUrl))).json();
   check(manifest.display==='standalone'&&manifest.icons.length===2,'PWA manifest invalid');
   const worker=await evaluate(`Promise.race([

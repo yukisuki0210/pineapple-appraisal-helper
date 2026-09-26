@@ -15,6 +15,7 @@ export function createHandler(store){
         for(const {key} of page.blobs){
           if(!keyPattern.test(key))continue;
           const [,row,position,color]=key.split('/');
+          if(Number(row)>6)continue;
           const group=`${row}/${position}`;
           const item=counts.get(group)||{row:Number(row),position,blue:0,count:0};
           item.count++;
@@ -34,7 +35,7 @@ export function createHandler(store){
       return json({ok:true});
     }
     const {id,row,position,color,previousKey}=body||{};
-    if(!idPattern.test(id||'')||!Number.isInteger(row)||row<1||row>99||!positions.includes(position)||!colors.includes(color)||previousKey&&(!keyPattern.test(previousKey)||!previousKey.endsWith('/'+id)))return json({error:'invalid record'},400);
+    if(!idPattern.test(id||'')||!Number.isInteger(row)||row<1||row>6||!positions.includes(position)||!colors.includes(color)||previousKey&&(!keyPattern.test(previousKey)||!previousKey.endsWith('/'+id)))return json({error:'invalid record'},400);
     const key=keyOf({id,row,position,color});
     await store.set(key,'1',{onlyIfNew:true});
     if(previousKey&&previousKey!==key)await store.delete(previousKey);
