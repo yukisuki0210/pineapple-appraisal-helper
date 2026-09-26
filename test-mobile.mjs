@@ -72,6 +72,9 @@ try{
     document.querySelector('[data-color="blue"]').click();
     document.querySelector('[data-value="1.2"]').click();
     const first=[el('totalMultiplier').textContent,el('currentPayout').textContent,el('rewardProbability').textContent];
+    const safetyStrict=[el('safeLimit').value,el('safeAction').textContent,el('stopBtn').textContent,el('inlineRecommended').textContent];
+    el('safeLimit').value='2';el('safeLimit').dispatchEvent(new Event('change'));
+    const safetyExtended=[el('safeAction').textContent,el('continueBtn').textContent];
     el('baseUnit').value='wan';el('baseUnit').dispatchEvent(new Event('change'));
     const converted=[el('baseValue').value,el('currentPayout').textContent];
     el('baseValue').value='2.5';el('baseValue').dispatchEvent(new Event('input'));
@@ -106,10 +109,11 @@ try{
     document.getElementById('tab-current').click();
     const trialRemoved=!el('trialBase')&&!el('trialMultiplier')&&!el('trialPayout');
     const stored=JSON.parse(localStorage.getItem('pineapple-appraisal-helper-v2'));
-    return {baseFirst,first,converted,firstWan,edit,second,third,undone,inline,inlineLinkOpened,prediction,history,trialRemoved,storedCount:stored.entries.length,baseUnit:stored.baseUnit};
+    return {baseFirst,first,safetyStrict,safetyExtended,converted,firstWan,edit,second,third,undone,inline,inlineLinkOpened,prediction,history,trialRemoved,storedCount:stored.entries.length,baseUnit:stored.baseUnit};
   })()`);
   check(result.baseFirst&&result.baseUnit==='wan','Base-value placement or unit failed');
   check(result.first.join('|')==='×1.200|3,000元|2/3',`First row: ${JSON.stringify(result.first)}`);
+  check(result.safetyStrict.join('|')==='1|已到设定行数，建议收手|按计划收手|建议现在收手'&&result.safetyExtended.join('|')==='可以继续到第 2 行|继续鉴定','Conservative risk guidance or plan selection failed');
   check(result.converted.join('|')==='0.25|3,000元'&&result.firstWan==='3万','Yuan/wan conversion changed the value');
   check(result.edit.join('|')==='1|middle|red|0.7',`Editing a recorded row: ${JSON.stringify(result.edit)}`);
   check(result.second.join('|')==='×0.600|1.5万',`Second row: ${JSON.stringify(result.second)}`);
