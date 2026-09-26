@@ -8,17 +8,19 @@ const root=new URL('./dist/',import.meta.url);
 const mime={'.html':'text/html; charset=utf-8','.webmanifest':'application/manifest+json','.js':'text/javascript','.png':'image/png'};
 const server=createServer(async(req,res)=>{
   const name=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\//,'')||'index.html';
-  if(!['index.html','manifest.webmanifest','service-worker.js','icon-192.png','icon-512.png','apple-touch-icon.png'].includes(name)){res.writeHead(404).end();return}
+  if(!['index.html','app.js','manifest.webmanifest','service-worker.js','icon-192.png','icon-512.png','apple-touch-icon.png'].includes(name)){res.writeHead(404).end();return}
   const file=new URL(name,root);
   try{const bytes=await readFile(file);res.writeHead(200,{'Content-Type':mime[name.slice(name.lastIndexOf('.'))]||'application/octet-stream'}).end(bytes)}
   catch{res.writeHead(404).end()}
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const port=server.address().port;
+const targetUrl=process.env.TEST_URL||`http://127.0.0.1:${port}/`;
+const screenshotPrefix=process.env.TEST_URL?'preview-live':'preview';
 const profile=await mkdtemp(join(tmpdir(),'pineapple-appraisal-test-'));
 const browser=spawn('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',[
   '--headless=new','--disable-gpu','--disable-gpu-sandbox','--no-sandbox','--no-first-run','--disable-extensions',
-  '--remote-debugging-port=0',`--user-data-dir=${profile}`,`http://127.0.0.1:${port}/`
+  '--remote-debugging-port=0',`--user-data-dir=${profile}`,targetUrl
 ],{stdio:'ignore'});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let socket;
@@ -53,47 +55,98 @@ try{
   await cdp('Page.enable');await cdp('Runtime.enable');
   for(const width of [375,390,430]){
     await cdp('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:true});
-    await cdp('Page.navigate',{url:`http://127.0.0.1:${port}/`});
+    await cdp('Page.navigate',{url:targetUrl});
     for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
     const dimensions=await evaluate('({viewport:innerWidth,content:document.documentElement.scrollWidth,tabs:document.querySelector(".tabs").getBoundingClientRect().width})');
     check(dimensions.viewport===width,`Viewport is ${dimensions.viewport}, expected ${width}`);
     check(dimensions.content<=width,`${width}px viewport overflows to ${dimensions.content}px`);
     const capture=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
-    await writeFile(new URL(`preview-${width}.png`,import.meta.url),Buffer.from(capture.data,'base64'));
-    console.log(`Mobile ${width}px: no horizontal overflow; screenshot preview-${width}.png`);
+    await writeFile(new URL(`${screenshotPrefix}-${width}.png`,import.meta.url),Buffer.from(capture.data,'base64'));
+    console.log(`Mobile ${width}px: no horizontal overflow; screenshot ${screenshotPrefix}-${width}.png`);
   }
   const result=await evaluate(`(()=>{
     const el=id=>document.getElementById(id);
     el('baseValue').value='1000';el('baseValue').dispatchEvent(new Event('input'));
+    document.querySelector('[data-position="left"]').click();
+    document.querySelector('[data-color="blue"]').click();
     document.querySelector('[data-value="1.2"]').click();
     const first=[el('totalMultiplier').textContent,el('currentPayout').textContent,el('rewardProbability').textContent];
-    el('continueBtn').click();document.querySelector('[data-value="0.5"]').click();
+    document.querySelector('[data-position="middle"]').click();
+    document.querySelector('[data-color="red"]').click();
+    document.querySelector('[data-value="0.7"]').click();
+    const edited=JSON.parse(localStorage.getItem('pineapple-appraisal-helper-v2')).entries;
+    const edit=[edited.length,edited[0].position,edited[0].color,edited[0].multiplier];
+    document.querySelector('[data-position="left"]').click();
+    document.querySelector('[data-color="blue"]').click();
+    document.querySelector('[data-value="1.2"]').click();
+    el('continueBtn').click();
+    document.querySelector('[data-position="right"]').click();
+    document.querySelector('[data-color="red"]').click();
+    document.querySelector('[data-value="0.5"]').click();
     const second=[el('totalMultiplier').textContent,el('currentPayout').textContent];
-    el('continueBtn').click();document.querySelector('[data-value="2"]').click();
+    el('continueBtn').click();
+    document.querySelector('[data-position="middle"]').click();
+    document.querySelector('[data-color="blue"]').click();
+    document.querySelector('[data-value="2"]').click();
     const third=[el('totalMultiplier').textContent,el('rewardProbability').textContent,el('penaltyProbability').textContent];
     el('undoBtn').click();
     const undone=el('totalMultiplier').textContent;
-    document.getElementById('tab-trial').click();
-    const trialVisible=document.getElementById('view-trial').classList.contains('active');
+    el('resetBtn').click();
+    document.getElementById('tab-prediction').click();
+    const prediction=[el('predictionRowLabel').textContent,el('recommendedPosition').textContent,el('sampleWarning').textContent,el('predictionCards').textContent];
+    document.getElementById('tab-history').click();
+    const history=[el('totalRecords').textContent,el('blueRecords').textContent,el('sessionCount').textContent,el('historyList').textContent];
+    document.getElementById('tab-current').click();
     el('trialBase').value='1000';el('trialBase').dispatchEvent(new Event('input'));
     el('trialMultiplier').value='2';el('trialMultiplier').dispatchEvent(new Event('input'));
     const trial=el('trialPayout').textContent;
-    el('resetBtn').click();
-    return {first,second,third,undone,trialVisible,trial};
+    const stored=JSON.parse(localStorage.getItem('pineapple-appraisal-helper-v2'));
+    return {first,edit,second,third,undone,prediction,history,trial,storedCount:stored.entries.length};
   })()`);
   check(result.first.join('|')==='×1.200|1,200|2/3',`First row: ${JSON.stringify(result.first)}`);
+  check(result.edit.join('|')==='1|middle|red|0.7',`Editing a recorded row: ${JSON.stringify(result.edit)}`);
   check(result.second.join('|')==='×0.600|600',`Second row: ${JSON.stringify(result.second)}`);
   check(result.third.join('|')==='×1.200|1/3|2/3',`Fourth-row risk: ${JSON.stringify(result.third)}`);
-  check(result.undone==='×0.600'&&result.trialVisible&&result.trial==='2,000','Undo, tab, or trial failed');
-  console.log('Appraisal, payout, row probability, undo, tab switch, and trial: passed');
-  const manifest=await (await fetch(`http://127.0.0.1:${port}/manifest.webmanifest`)).json();
+  check(result.undone==='×0.600'&&result.trial==='2,000','Undo or trial failed');
+  check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('左')&&result.prediction[2].includes('样本不足')&&result.prediction[3].includes('样本 1'),'Historical recommendation failed');
+  check(result.history[0]==='2'&&result.history[1]==='1'&&result.history[2]==='1'&&result.history[3].includes('右')&&result.storedCount===2,'Historical storage failed');
+  await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  for(const view of ['prediction','history']){
+    const width=await evaluate(`(()=>{document.getElementById('tab-${view}').click();return document.documentElement.scrollWidth})()`);
+    check(width<=390,`${view} page overflows to ${width}px`);
+    const capture=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+    await writeFile(new URL(`preview-${view}-390.png`,import.meta.url),Buffer.from(capture.data,'base64'));
+  }
+  await cdp('Page.navigate',{url:targetUrl});
+  for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
+  const persisted=await evaluate("({total:document.getElementById('totalMultiplier').textContent,count:document.getElementById('totalRecords').textContent,recommendation:document.getElementById('recommendedPosition').textContent})");
+  check(persisted.total==='×1.000'&&persisted.count==='2'&&persisted.recommendation.includes('左'),'History did not persist after reload');
+  console.log('Position/color/factor recording, payout, row rules, undo, reset, prediction, and reload persistence: passed');
+  const manifest=await (await fetch(new URL('manifest.webmanifest',targetUrl))).json();
   check(manifest.display==='standalone'&&manifest.icons.length===2,'PWA manifest invalid');
   const worker=await evaluate(`Promise.race([
     navigator.serviceWorker.ready.then(registration=>({scope:registration.scope,state:registration.active?.state})),
     new Promise(resolve=>setTimeout(()=>resolve(null),5000))
   ])`);
   check(worker?.state==='activated','Service worker did not activate');
-  console.log('PWA manifest and service worker: passed');
+  check(await evaluate('!!navigator.serviceWorker.controller'),'Service worker does not control the page');
+  await cdp('Network.enable');
+  await cdp('Network.emulateNetworkConditions',{offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});
+  await cdp('Page.navigate',{url:targetUrl});
+  let offlineReady=false;
+  for(let i=0;i<40;i++){
+    offlineReady=await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length");
+    if(offlineReady)break;await sleep(100);
+  }
+  check(offlineReady,'PWA did not open offline');
+  await cdp('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:0,uploadThroughput:0});
+  console.log('PWA manifest, service worker, and offline opening: passed');
+  await evaluate("(()=>{localStorage.removeItem('pineapple-appraisal-helper-v2');localStorage.setItem('pineapple-appraisal-helper-v1',JSON.stringify({rows:[1.2,0.5],awaiting:true,stopped:false,base:'1000'}));return true})()");
+  await cdp('Page.navigate',{url:targetUrl});
+  for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
+  const migration=await evaluate("({total:document.getElementById('totalMultiplier').textContent,records:document.getElementById('totalRecords').textContent,history:document.getElementById('historyList').textContent})");
+  check(migration.total==='×0.600'&&migration.records==='0'&&migration.history.includes('旧版未记录'),'Legacy data migration failed');
+  console.log('V1 multiplier history migration without invented position/color: passed');
 }finally{
   socket?.close();browser.kill();server.close();
   await sleep(200);await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:200}).catch(()=>{});

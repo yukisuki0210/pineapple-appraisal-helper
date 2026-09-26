@@ -1,5 +1,5 @@
 const CACHE_NAME = 'pineapple-appraisal-v1';
-const ASSETS = ['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
+const ASSETS = ['./','./index.html','./app.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));
   self.skipWaiting();
@@ -14,6 +14,13 @@ self.addEventListener('fetch',event=>{
       if(response.ok){const cache=await caches.open(CACHE_NAME);await cache.put('./index.html',response.clone())}
       return response;
     }).catch(()=>caches.match('./index.html')));
+    return;
+  }
+  if(new URL(event.request.url).pathname.endsWith('/app.js')){
+    event.respondWith(fetch(event.request).then(async response=>{
+      if(response.ok){const cache=await caches.open(CACHE_NAME);await cache.put(event.request,response.clone())}
+      return response;
+    }).catch(()=>caches.match(event.request)));
     return;
   }
   event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{

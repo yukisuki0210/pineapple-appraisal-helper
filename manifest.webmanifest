@@ -1,7 +1,7 @@
 {
   "name": "菠萝岛鉴定助手",
   "short_name": "菠萝岛鉴定",
-  "description": "重量鉴定倍率记录、风险参考与收益试算",
+  "description": "重量鉴定翻牌记录、历史样本参考与收益试算",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

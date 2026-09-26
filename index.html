@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f4ec">
-  <meta name="description" content="菠萝岛重量鉴定倍率记录、风险参考与收益试算。">
+  <meta name="description" content="菠萝岛重量鉴定：记录位置、牌色和倍率，查看历史出蓝率与收益参考。">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
@@ -47,8 +47,6 @@
     .field-hint{font-size:11px;color:var(--muted);margin:7px 0 0;line-height:1.5}
     .selection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .multiplier-btn{min-height:48px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
-    .multiplier-btn[data-tone="red"]{color:var(--red)}
-    .multiplier-btn[data-tone="blue"]{color:var(--blue)}
     .multiplier-btn.selected{border-color:var(--gold);background:var(--gold-light);box-shadow:inset 0 0 0 1px var(--gold)}
     .custom-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
     .small-button{height:46px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:0 13px;font-size:12px;font-weight:750;color:#564c3f;white-space:nowrap}
@@ -87,6 +85,44 @@
     .trial-option{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px;text-align:left;min-width:0}
     .trial-option b{display:block;font-size:17px;color:var(--gold);margin-bottom:3px}
     .trial-option span{display:block;color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+    .choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .color-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .choice-btn{min-height:47px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:15px;font-weight:800;color:var(--ink)}
+    .choice-btn.selected{border-color:var(--gold);background:var(--gold-light);box-shadow:inset 0 0 0 1px var(--gold)}
+    .choice-btn.blue{color:var(--blue)}.choice-btn.red{color:var(--red)}
+    .choice-btn.blue.selected{border-color:var(--blue);background:var(--blue-light);box-shadow:inset 0 0 0 1px var(--blue)}
+    .choice-btn.red.selected{border-color:var(--red);background:var(--red-light);box-shadow:inset 0 0 0 1px var(--red)}
+    .choice-btn:disabled{opacity:.45;cursor:not-allowed}
+    .field-group{margin-top:15px}
+    .entry-hint{min-height:18px;margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+    .stat-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+    .stat-card{min-width:0;border:1px solid var(--line);border-radius:13px;padding:11px 7px;background:#fff;text-align:center}
+    .stat-card.recommended{border-color:var(--gold);background:#fcf6e9}
+    .stat-card .place{display:block;font-size:13px;font-weight:800}
+    .stat-card .rate{display:block;font-size:22px;font-weight:850;color:var(--blue);margin:7px 0 3px;font-variant-numeric:tabular-nums}
+    .stat-card .sample{display:block;color:var(--muted);font-size:10px;line-height:1.4}
+    .recommendation{background:var(--gold-light);border-radius:14px;padding:14px;margin-top:13px}
+    .recommendation span{display:block;font-size:11px;color:#785c2d}
+    .recommendation strong{display:block;font-size:23px;line-height:1.3;margin-top:3px}
+    .sample-warning{border-radius:10px;background:#f8eee1;color:#775522;padding:9px 10px;font-size:11px;line-height:1.5;margin:11px 0 0}
+    .mini-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+    .mini-stats div{border-radius:12px;background:#f6f1e8;padding:10px;text-align:center}
+    .mini-stats strong{display:block;font-size:19px}.mini-stats span{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+    .row-stat{padding:11px 0;border-top:1px solid var(--line)}
+    .row-stat:first-child{border-top:0;padding-top:0}
+    .row-stat strong{display:block;font-size:12px;margin-bottom:6px}
+    .row-stat span{display:block;font-size:11px;color:var(--muted);line-height:1.5}
+    .history-item{padding:10px 0;border-top:1px solid var(--line)}
+    .history-item:first-child{border-top:0;padding-top:0}
+    .history-item strong{display:block;font-size:12px}
+    .history-item span{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+    .empty-state{font-size:12px;color:var(--muted);line-height:1.6;margin:0}
+    .details-panel{padding:0;overflow:hidden}
+    .details-panel summary{list-style:none;cursor:pointer;padding:15px 16px;font-size:14px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+    .details-panel summary::-webkit-details-marker{display:none}
+    .details-panel summary::after{content:'展开';font-size:11px;color:var(--gold)}
+    .details-panel[open] summary::after{content:'收起'}
+    .details-body{padding:0 16px 16px}
     .footer{text-align:center;color:#9b9282;font-size:10px;line-height:1.6;padding:12px 5px}
     @media(max-width:380px){.app{padding-left:max(11px,env(safe-area-inset-left,0px));padding-right:max(11px,env(safe-area-inset-right,0px))}.panel{padding:13px}.selection-grid{gap:6px}.multiplier-btn{font-size:17px}.hero-card{padding:16px}}
   </style>
@@ -96,13 +132,13 @@
     <header class="hero">
       <div class="eyebrow">PINEAPPLE ISLAND · APPRAISAL</div>
       <h1>菠萝岛鉴定助手</h1>
-      <p class="subtitle">记录重量鉴定倍率，清楚看收益，也看清下一步风险。</p>
+      <p class="subtitle">逐行记录翻牌，参考历史样本，清楚看见当前倍率。</p>
     </header>
 
     <nav class="tabs" role="tablist" aria-label="功能切换">
       <button class="tab" role="tab" id="tab-current" aria-controls="view-current" aria-selected="true" data-view="current">当前鉴定</button>
-      <button class="tab" role="tab" id="tab-strategy" aria-controls="view-strategy" aria-selected="false" data-view="strategy">策略参考</button>
-      <button class="tab" role="tab" id="tab-trial" aria-controls="view-trial" aria-selected="false" data-view="trial">收益试算</button>
+      <button class="tab" role="tab" id="tab-prediction" aria-controls="view-prediction" aria-selected="false" data-view="prediction">下一张预测</button>
+      <button class="tab" role="tab" id="tab-history" aria-controls="view-history" aria-selected="false" data-view="history">历史统计</button>
     </nav>
 
     <section id="view-current" class="view active" role="tabpanel" aria-labelledby="tab-current">
@@ -111,144 +147,88 @@
         <div class="big-multiplier" id="totalMultiplier" aria-live="polite">×1.000</div>
         <div class="hero-divider"></div>
         <div class="hero-meta">
-          <div><span>已翻开</span><strong id="revealedCount">0 行</strong></div>
-          <div><span>现在收手预计收益</span><strong id="currentPayout">—</strong></div>
+          <div><span>已记录</span><strong id="revealedCount">0 行</strong></div>
+          <div><span>收手预计收益</span><strong id="currentPayout">—</strong></div>
         </div>
       </div>
 
       <div class="panel">
-        <div class="panel-head"><div><h2>当前鉴定</h2><p id="rowInstruction">请选择第 1 行翻出的倍率</p></div><span class="step-pill" id="rowPill">第 1 行</span></div>
-        <label class="field-label" for="baseValue">果子基础价值</label>
-        <input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值，例如 1000">
-        <p class="field-hint">收益按基础价值 × 已选倍率计算，单位沿用游戏内价值单位。</p>
-        <div style="height:15px"></div>
-        <div class="field-label">这一行翻出的倍率</div>
+        <div class="panel-head"><div><h2>本局翻牌</h2><p id="rowInstruction">依次选择位置、牌色和倍率</p></div><span class="step-pill" id="rowPill">第 1 行</span></div>
+        <div class="field-label">① 这次选了哪个位置</div>
+        <div class="choice-grid" id="positionOptions" aria-label="选择位置">
+          <button type="button" class="choice-btn" data-position="left">左</button>
+          <button type="button" class="choice-btn" data-position="middle">中</button>
+          <button type="button" class="choice-btn" data-position="right">右</button>
+        </div>
+        <div class="field-label field-group">② 翻出什么牌</div>
+        <div class="color-grid" id="colorOptions" aria-label="选择牌色">
+          <button type="button" class="choice-btn blue" data-color="blue">蓝牌 · 奖励</button>
+          <button type="button" class="choice-btn red" data-color="red">红牌 · 惩罚</button>
+        </div>
+        <div class="field-label field-group">③ 本行倍率</div>
         <div class="selection-grid" id="currentOptions" aria-label="选择倍率"></div>
-        <div class="custom-line"><input id="customMultiplier" class="value-input" type="number" min="0.01" max="100" step="any" inputmode="decimal" placeholder="其他倍率"><button id="addCustom" class="small-button" type="button">使用倍率</button></div>
-        <div class="field-label" style="margin-top:15px">已选倍率</div>
+        <div class="custom-line"><input id="customMultiplier" class="value-input" type="number" min="0.01" max="100" step="any" inputmode="decimal" placeholder="其他倍率" required><button id="addCustom" class="small-button" type="button">使用倍率</button></div>
+        <p class="entry-hint" id="entryHint" aria-live="polite">三项选齐后自动记录本行，并即时更新总倍率。</p>
+        <div class="field-label field-group">本局记录</div>
         <div class="history" id="history" aria-live="polite"></div>
-        <div class="edit-actions"><button id="undoBtn" class="small-button" type="button">撤销上一项</button><button id="resetBtn" class="small-button" type="button">重置鉴定</button></div>
+        <div class="edit-actions"><button id="undoBtn" class="small-button" type="button">撤销上一条</button><button id="resetBtn" class="small-button" type="button">重置本局</button></div>
+        <p id="storageWarning" class="sample-warning" hidden>本机存储不可用，关闭网页后记录可能丢失。</p>
       </div>
 
       <div class="panel">
-        <div class="panel-head"><div><h2>下一次翻牌</h2><p id="nextRowLabel">第 1 行</p></div><span class="step-pill" id="riskPill">谨慎</span></div>
-        <div class="probability"><div class="reward"><span>奖励牌 · 蓝</span><strong id="rewardProbability">2/3</strong></div><div class="penalty"><span>惩罚牌 · 红</span><strong id="penaltyProbability">1/3</strong></div></div>
+        <div class="panel-head"><div><h2>收益与收手参考</h2><p id="nextRowLabel">下一张：第 1 行</p></div><span class="step-pill" id="riskPill">谨慎</span></div>
+        <label class="field-label" for="baseValue">果子基础价值</label>
+        <input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值，例如 1000">
+        <p class="field-hint">预计收益 = 基础价值 × 当前总倍率。</p>
+        <div class="probability"><div class="reward"><span>蓝牌 · 奖励</span><strong id="rewardProbability">2/3</strong></div><div class="penalty"><span>红牌 · 惩罚</span><strong id="penaltyProbability">1/3</strong></div></div>
         <div class="risk"><strong class="risk-badge" id="riskBadge">谨慎</strong><p id="riskText">前 3 行每行有 2 张奖励牌、1 张惩罚牌。只知道牌色比例，无法算出盈利概率。</p></div>
         <div class="decision-row"><button id="continueBtn" class="primary" type="button" disabled>继续鉴定</button><button id="stopBtn" class="secondary" type="button">立即收手</button></div>
         <div id="stoppedMessage" class="stopped" hidden></div>
-        <p class="disclaimer">仅做风险参考。牌色比例不是盈利概率；实际结果以游戏规则和翻出的倍率为准。</p>
+        <p class="disclaimer">仅做风险参考。固定牌色比例不等于盈利概率。</p>
       </div>
+      <details class="panel details-panel"><summary>收益试算 · 其他倍率</summary><div class="details-body">
+        <label class="field-label" for="trialBase">果子基础价值</label><input id="trialBase" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值">
+        <div style="height:13px"></div>
+        <label class="field-label" for="trialMultiplier">当前总倍率</label><input id="trialMultiplier" class="value-input" type="number" min="0.01" max="1000000" step="any" inputmode="decimal" value="1">
+        <button id="useCurrent" class="small-button" type="button" style="height:36px;margin-top:9px">带入本局</button>
+        <div class="trial-result"><span>现在收手预计收益</span><strong id="trialPayout">—</strong></div>
+        <div class="field-label">假设下一次翻出</div><div class="trial-grid" id="trialGrid"></div>
+        <p class="disclaimer">仅为倍率算术试算，不包含具体倍率的出现概率或下注成本。</p>
+      </div></details>
     </section>
 
-    <section id="view-strategy" class="view" role="tabpanel" aria-labelledby="tab-strategy">
-      <div class="panel"><div class="panel-head"><div><h2>策略参考</h2><p>整理玩家经验，帮助回顾决策</p></div></div><p class="disclaimer" style="margin-top:0">经验参考，不代表必赚。加注是玩家策略描述，本站不处理下注金额。</p>
+    <section id="view-prediction" class="view" role="tabpanel" aria-labelledby="tab-prediction">
+      <div class="panel">
+        <div class="panel-head"><div><h2>下一张预测</h2><p id="predictionRowLabel">统计第 1 行的历史选择</p></div><span class="step-pill">仅看历史</span></div>
+        <div class="recommendation"><span>历史样本推荐位置</span><strong id="recommendedPosition">暂无推荐</strong></div>
+        <div class="stat-cards" id="predictionCards"></div>
+        <p class="sample-warning" id="sampleWarning">样本不足，仅供参考。</p>
+        <p class="disclaimer">此推荐只按同一行、同一位置的历史出蓝率排序，不能预测随机翻牌结果。已记录的是自己选过的位置，样本可能有偏差。</p>
+      </div>
+      <div class="panel"><div class="panel-head"><div><h2>该行固定牌色比例</h2><p>与历史统计分开看</p></div></div>
+        <div class="probability"><div class="reward"><span>蓝牌 · 奖励</span><strong id="predictionReward">2/3</strong></div><div class="penalty"><span>红牌 · 惩罚</span><strong id="predictionPenalty">1/3</strong></div></div>
+        <p class="field-hint">前 3 行为 2 蓝 1 红；第 4 行起为 1 蓝 2 红。历史记录不会改变这条规则。</p>
+      </div>
+      <details class="panel details-panel"><summary>玩家经验策略参考</summary><div class="details-body">
+        <p class="disclaimer" style="margin-top:0">经验参考，不代表必赚。加注是玩家策略描述，本站不处理下注金额。</p>
         <div class="strategy-card"><h3>第 1 行出现<span class="red-word">红色</span></h3><p>经验做法：加注 → 再点两次<span class="blue-word">蓝色</span> → 收手。</p></div>
         <div class="strategy-card"><h3>第 2 行出现<span class="red-word">红色</span></h3><p>经验做法：加注 → 再点一次<span class="blue-word">蓝色</span> → 收手。</p></div>
         <div class="strategy-card"><h3>第 3 行及以后出现<span class="red-word">红色</span></h3><p>经验做法：直接收手。</p></div>
         <div class="strategy-card"><h3>前期一路<span class="blue-word">蓝色</span>到第 7 行</h3><p>可继续按正常节奏判断，仍需留意后续惩罚牌比例。</p></div>
         <div class="strategy-card"><h3>前期出现过<span class="red-word">红色</span>后一路蓝到第 7 行</h3><p>不建议继续冒险。</p></div>
-      </div>
+      </div></details>
     </section>
 
-    <section id="view-trial" class="view" role="tabpanel" aria-labelledby="tab-trial">
-      <div class="panel"><div class="panel-head"><div><h2>收益试算</h2><p>假设倍率变化后的价值</p></div></div>
-        <label class="field-label" for="trialBase">果子基础价值</label><input id="trialBase" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值">
-        <div style="height:13px"></div>
-        <label class="field-label" for="trialMultiplier">当前总倍率</label><input id="trialMultiplier" class="value-input" type="number" min="0.01" max="1000000" step="any" inputmode="decimal" value="1">
-        <button id="useCurrent" class="small-button" type="button" style="height:36px;margin-top:9px">带入当前鉴定</button>
-        <div class="trial-result"><span>现在收手预计收益</span><strong id="trialPayout">—</strong></div>
-        <div class="field-label">假设下一次翻出</div><div class="trial-grid" id="trialGrid"></div>
-        <p class="disclaimer">仅为倍率算术试算，不包含下一次翻到具体倍率的概率，也不计算下注成本。</p>
+    <section id="view-history" class="view" role="tabpanel" aria-labelledby="tab-history">
+      <div class="panel"><div class="panel-head"><div><h2>历史统计</h2><p>本设备保存的翻牌记录</p></div></div>
+        <div class="mini-stats"><div><strong id="totalRecords">0</strong><span>有效选择</span></div><div><strong id="blueRecords">0</strong><span>蓝牌</span></div><div><strong id="sessionCount">0</strong><span>已记录局数</span></div></div>
+        <p class="field-hint">重置本局会保留历史统计；撤销上一条会移除那条记录。</p>
       </div>
+      <div class="panel"><div class="panel-head"><div><h2>各行位置统计</h2><p>仅计算有位置和牌色的记录</p></div></div><div id="historyRows"></div></div>
+      <div class="panel"><div class="panel-head"><div><h2>逐条记录</h2><p>按时间由近到远</p></div></div><div id="historyList"></div><button id="showMoreHistory" class="small-button" type="button" hidden style="margin-top:10px">查看更多</button></div>
     </section>
     <footer class="footer">菠萝岛鉴定助手 · 数据仅存于本设备 · 仅做风险参考</footer>
   </main>
-  <script>
-  (()=>{
-    const $=id=>document.getElementById(id);
-    const choices=[0.5,0.7,1.2,1.3,1.7,2.0];
-    const key='pineapple-appraisal-helper-v1';
-    const saved=(()=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}})();
-    const state={rows:Array.isArray(saved?.rows)?saved.rows.filter(n=>Number.isFinite(n)&&n>0&&n<=100).slice(0,99):[],awaiting:Boolean(saved?.awaiting),stopped:Boolean(saved?.stopped),base:saved?.base??''};
-    if(!state.rows.length)state.awaiting=false;
-    $('baseValue').value=state.base;
-    const validBase=value=>value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;
-    const total=()=>state.rows.reduce((a,b)=>a*b,1);
-    const money=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2}).format(n);
-    const multiplier=n=>new Intl.NumberFormat('zh-CN',{minimumFractionDigits:3,maximumFractionDigits:3}).format(n);
-    const save=()=>{try{localStorage.setItem(key,JSON.stringify(state))}catch{}};
-    const tone=n=>n<1?'red':n>1?'blue':'neutral';
-    function render(){
-      const current=state.rows.length+(state.awaiting?0:1);
-      const upcoming=state.rows.length+1;
-      const early=upcoming<=3;
-      const t=total();
-      $('totalMultiplier').textContent='×'+multiplier(t);
-      $('revealedCount').textContent=state.rows.length+' 行';
-      $('currentPayout').textContent=validBase(state.base)?money(Number(state.base)*t):'—';
-      $('rowPill').textContent=state.stopped?'已收手':'第 '+current+' 行';
-      $('rowInstruction').textContent=state.stopped?'本次鉴定已结束':state.awaiting?'第 '+current+' 行已记录，可继续或收手':'请选择第 '+current+' 行翻出的倍率';
-      $('nextRowLabel').textContent=state.stopped?'本次已结束':'第 '+upcoming+' 行';
-      $('rewardProbability').textContent=early?'2/3':'1/3';
-      $('penaltyProbability').textContent=early?'1/3':'2/3';
-      $('riskPill').textContent=state.stopped?'已结束':early?'谨慎':'建议收手';
-      $('riskBadge').textContent=state.stopped?'已收手':early?'谨慎':'建议收手';
-      $('riskText').textContent=early?'前 3 行每行有 2 张奖励牌、1 张惩罚牌。只知道牌色比例，无法算出盈利概率。':'第 4 行起每行有 1 张奖励牌、2 张惩罚牌。惩罚牌比例更高，建议谨慎收手。';
-      $('continueBtn').disabled=state.stopped||!state.awaiting||state.rows.length>=99;
-      $('stopBtn').disabled=state.stopped;
-      $('addCustom').disabled=state.stopped;
-      $('customMultiplier').disabled=state.stopped;
-      $('undoBtn').disabled=!state.rows.length;
-      $('stoppedMessage').hidden=!state.stopped;
-      if(state.stopped)$('stoppedMessage').textContent='已收手 · '+state.rows.length+' 行 · 总倍率 ×'+multiplier(t)+(validBase(state.base)?' · 预计收益 '+money(Number(state.base)*t):'。可输入基础价值查看收益。');
-      $('currentOptions').querySelectorAll('button').forEach(button=>{
-        button.disabled=state.stopped;
-        button.classList.toggle('selected',state.awaiting&&Number(button.dataset.value)===state.rows.at(-1));
-      });
-      $('history').replaceChildren();
-      if(!state.rows.length){const empty=document.createElement('span');empty.className='history-empty';empty.textContent='尚未选择倍率';$('history').append(empty)}
-      state.rows.forEach((n,i)=>{const chip=document.createElement('span');chip.className='history-chip '+tone(n);chip.textContent=`第 ${i+1} 行 · ×${n}`;$('history').append(chip)});
-      save();
-    }
-    function choose(value){
-      const n=Number(value);
-      if(state.stopped||!Number.isFinite(n)||n<=0||n>100)return;
-      if(state.awaiting)state.rows[state.rows.length-1]=n;else state.rows.push(n);
-      state.awaiting=true;
-      render();
-    }
-    for(const n of choices){
-      const button=document.createElement('button');button.type='button';button.className='multiplier-btn';button.dataset.value=String(n);button.dataset.tone=tone(n);button.textContent='×'+n.toFixed(1);button.setAttribute('aria-label','选择倍率 '+n);button.addEventListener('click',()=>choose(n));$('currentOptions').append(button);
-    }
-    $('addCustom').addEventListener('click',()=>{choose($('customMultiplier').value);$('customMultiplier').value=''});
-    $('customMultiplier').addEventListener('keydown',e=>{if(e.key==='Enter')$('addCustom').click()});
-    $('baseValue').addEventListener('input',()=>{state.base=$('baseValue').value;render()});
-    $('continueBtn').addEventListener('click',()=>{if(state.awaiting&&!state.stopped){state.awaiting=false;render()}});
-    $('stopBtn').addEventListener('click',()=>{state.stopped=true;render()});
-    $('undoBtn').addEventListener('click',()=>{if(state.rows.length){state.rows.pop();state.awaiting=false;state.stopped=false;render()}});
-    $('resetBtn').addEventListener('click',()=>{state.rows=[];state.awaiting=false;state.stopped=false;render()});
-    document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
-      document.querySelectorAll('.tab').forEach(other=>other.setAttribute('aria-selected',String(other===tab)));
-      document.querySelectorAll('.view').forEach(view=>view.classList.toggle('active',view.id==='view-'+tab.dataset.view));
-    }));
-    function trial(){
-      const base=$('trialBase').value;
-      const current=Number($('trialMultiplier').value);
-      const valid=validBase(base)&&Number.isFinite(current)&&current>0&&current<=1000000;
-      $('trialPayout').textContent=valid?money(Number(base)*current):'—';
-      $('trialGrid').replaceChildren();
-      choices.forEach(n=>{
-        const button=document.createElement('button');button.type='button';button.className='trial-option';
-        const heading=document.createElement('b');heading.textContent='×'+n.toFixed(1);
-        const value=document.createElement('span');value.textContent=valid?'总倍率 ×'+multiplier(current*n)+' · 收益 '+money(Number(base)*current*n):'输入基础价值查看';
-        button.append(heading,value);button.addEventListener('click',()=>{$('trialMultiplier').value=Number.isFinite(current)&&current>0?String(current*n):String(n);trial()});$('trialGrid').append(button);
-      });
-    }
-    ['trialBase','trialMultiplier'].forEach(id=>$(id).addEventListener('input',trial));
-    $('useCurrent').addEventListener('click',()=>{$('trialBase').value=state.base;$('trialMultiplier').value=String(total());trial()});
-    render();trial();
-    if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
-  })();
-  </script>
+  <script src="./app.js" defer></script>
 </body>
 </html>
