@@ -116,7 +116,7 @@ try{
   check(result.third.join('|')==='×1.200|1/3|2/3',`Fourth-row risk: ${JSON.stringify(result.third)}`);
   check(result.undone==='×0.600'&&result.trialRemoved,'Undo or trial removal failed');
   check(result.inline[0].includes('第 1 行')&&result.inline[1].includes('样本不足')&&result.inline[2].includes('样本不足')&&result.inlineLinkOpened,'Inline sample warning failed');
-  check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('样本不足')&&result.prediction[2].includes('样本不足')&&result.prediction[3].includes('样本 1'),'Historical sample warning failed');
+  check(result.prediction[0].includes('第 1 行')&&result.prediction[1].includes('样本不足')&&result.prediction[2].includes('少于 5 条')&&result.prediction[3].includes('样本 1'),'Historical sample warning failed');
   check(result.history[0]==='2'&&result.history[1]==='1'&&result.history[2]==='1'&&result.history[3].includes('右')&&result.storedCount===2,'Historical storage failed');
   await cdp('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   const currentCapture=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
@@ -222,6 +222,10 @@ try{
       const sessionId='other-'+position+'-'+i+'-1234567890';
       add(sessionId,1,'right','blue');add(sessionId,2,position,position==='left'?'blue':'red');
     }
+    for(let i=0;i<15;i++){
+      const sessionId='other-middle-blue-'+i+'-1234567890';
+      add(sessionId,1,'middle','blue');add(sessionId,2,'middle','blue');
+    }
     const sessionId='current-path-1234567890';
     add(sessionId,1,'left','blue');
     localStorage.setItem('pineapple-appraisal-helper-v2',JSON.stringify({version:2,sessionId,entries,awaiting:true,stopped:false,base:'',baseUnit:'yuan',draft:{position:'left',color:'blue',multiplier:1}}));
@@ -233,12 +237,43 @@ try{
     const el=id=>document.getElementById(id);
     const exact={condition:el('predictionCondition').textContent,recommendation:el('recommendedPosition').textContent,scope:el('recommendationScope').textContent,cards:el('predictionCards').textContent};
     document.querySelector('[data-position="right"]').click();
-    const fallback={recommendation:el('recommendedPosition').textContent,scope:el('recommendationScope').textContent};
+    const fallback={recommendation:el('recommendedPosition').textContent,scope:el('recommendationScope').textContent,cards:el('predictionCards').textContent};
     return {exact,fallback};
   })()`);
   check(conditional.exact.condition.includes('第 1 行左蓝')&&conditional.exact.recommendation.includes('中')&&conditional.exact.scope.includes('完整路径')&&conditional.exact.cards.includes('80%'),'Conditional next-row rates or recommendation failed');
-  check(conditional.fallback.recommendation.includes('左')&&conditional.fallback.scope.includes('同一行总体'),'Sparse-path fallback was not labeled or selected correctly');
-  console.log('Conditional path rates, position recommendation, and labeled fallback: passed');
+  check(conditional.fallback.recommendation.includes('左')&&conditional.fallback.scope.includes('完整路径')&&conditional.fallback.cards.includes('100%'),'Recommendation must match the partially sampled path cards even when overall statistics prefer another position');
+  await evaluate(`(()=>{
+    const entries=[];
+    const add=(sessionId,row,position,color)=>entries.push({id:sessionId+'-row-'+row,sessionId,row,position,color,multiplier:1,at:Date.now()});
+    for(let i=0;i<5;i++){
+      const exact='exact-session-'+i+'-1234567890';
+      add(exact,1,'left','blue');add(exact,2,'middle','blue');add(exact,3,'right','blue');
+      const other='previous-session-'+i+'-1234567890';
+      add(other,1,'right','blue');add(other,2,'middle','blue');add(other,3,'left','red');
+    }
+    const sessionId='current-previous-1234567890';
+    add(sessionId,1,'left','blue');add(sessionId,2,'middle','blue');
+    localStorage.setItem('pineapple-appraisal-helper-v2',JSON.stringify({version:2,sessionId,entries,awaiting:true,stopped:false,base:'',baseUnit:'yuan',draft:{position:'middle',color:'blue',multiplier:1}}));
+    return true;
+  })()`);
+  await cdp('Page.navigate',{url:targetUrl});
+  for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
+  const previousFallback=await evaluate("({scope:document.getElementById('recommendationScope').textContent,condition:document.getElementById('predictionCondition').textContent,cards:document.getElementById('predictionCards').textContent,choice:document.getElementById('recommendedPosition').textContent})");
+  check(previousFallback.scope.includes('上一行条件')&&previousFallback.condition.includes('卡片和推荐均显示上一行条件')&&previousFallback.cards.includes('样本 5')&&previousFallback.choice.includes('右'),'Fallback cards and recommendation must use the same previous-row sample');
+  await evaluate(`(()=>{
+    const entries=[];
+    for(const [position,count,blue] of [['left',82,60],['middle',32,24],['right',20,14]])for(let i=0;i<count;i++){
+      const sessionId='sample-weight-'+position+'-'+i+'-1234567890';
+      entries.push({id:sessionId+'-row-1',sessionId,row:1,position,color:i<blue?'blue':'red',multiplier:1,at:Date.now()});
+    }
+    localStorage.setItem('pineapple-appraisal-helper-v2',JSON.stringify({version:2,sessionId:'empty-current-1234567890',entries,awaiting:false,stopped:false,base:'',baseUnit:'yuan',draft:{position:null,color:null,multiplier:null}}));
+    return true;
+  })()`);
+  await cdp('Page.navigate',{url:targetUrl});
+  for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
+  const sampleWeighted=await evaluate("({choice:document.getElementById('recommendedPosition').textContent,scope:document.getElementById('recommendationScope').textContent,cards:document.getElementById('predictionCards').textContent})");
+  check(sampleWeighted.choice.includes('左')&&sampleWeighted.scope.includes('蓝 60 / 样本 82')&&sampleWeighted.cards.includes('75%'),'Larger reliable sample should outrank a tiny raw-rate advantage');
+  console.log('Conditional path rates, sample-aware recommendation, and matching fallback cards: passed');
 }finally{
   socket?.close();browser.kill();server.close();server.closeAllConnections();
   await sleep(200);await rm(profile,{recursive:true,force:true,maxRetries:5,retryDelay:200}).catch(()=>{});

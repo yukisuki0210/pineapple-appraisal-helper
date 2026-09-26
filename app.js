@@ -90,7 +90,11 @@
     });
   }
   function recommendation(stats){
-    return stats.filter(item=>item.count>0).sort((a,b)=>b.rate-a.rate||b.count-a.count||positions.findIndex(([key])=>key===a.position)-positions.findIndex(([key])=>key===b.position))[0]||null;
+    const lowerBound=item=>{
+      const n=item.count,p=item.blue/n,z=1.96,z2=z*z;
+      return (p+z2/(2*n)-z*Math.sqrt(p*(1-p)/n+z2/(4*n*n)))/(1+z2/n);
+    };
+    return stats.filter(item=>item.count>=5).sort((a,b)=>lowerBound(b)-lowerBound(a)||b.rate-a.rate||b.count-a.count||positions.findIndex(([key])=>key===a.position)-positions.findIndex(([key])=>key===b.position))[0]||null;
   }
   function personalConditional(path,mode){
     const row=path.length+1;
@@ -201,31 +205,32 @@
     const overall=statsForRow(row,source);
     const exact=canCondition?(source==='shared'?(sharedPathLoaded===pathKey?cleanConditional(sharedConditional?.exact):null):personalConditional(path,'exact')):null;
     const previous=canCondition&&row>2?(source==='shared'?(sharedPathLoaded===pathKey?cleanConditional(sharedConditional?.previous):null):personalConditional(path,'previous')):null;
-    const shownStats=exact?.stats||overall;
-    const sufficientlySampled=stats=>stats?.every(item=>item.count>=5);
+    const comparable=stats=>stats?.filter(item=>item.count>=5).length>=2;
     let recommendationStats=null;
     let tier='';
-    if(exact&&sufficientlySampled(exact.stats)){recommendationStats=exact.stats;tier='完整路径'}
-    else if(previous&&sufficientlySampled(previous.stats)){recommendationStats=previous.stats;tier='上一行条件'}
-    else if(sufficientlySampled(overall)){recommendationStats=overall;tier='同一行总体'}
+    if(exact&&comparable(exact.stats)){recommendationStats=exact.stats;tier='完整路径'}
+    else if(previous&&comparable(previous.stats)){recommendationStats=previous.stats;tier='上一行条件'}
+    else if(comparable(overall)){recommendationStats=overall;tier='同一行总体'}
+    const shownStats=recommendationStats||exact?.stats||overall;
     const best=recommendationStats?recommendation(recommendationStats):null;
     const insufficient=shownStats.some(item=>item.count<5);
+    const missing=shownStats.filter(item=>item.count<5).map(item=>item.label);
     const rates=shownStats.map(item=>item.label+' '+(item.rate===null?'—':Math.round(item.rate*100)+'%')+'（'+item.count+'条）').join(' · ');
     const conditionText=canCondition?(exact?`条件：${pathLabel(path)}。匹配 ${exact.matchedSessions} 局，其中 ${exact.stats.reduce((n,item)=>n+item.count,0)} 局记录了第 ${row} 行。`:`条件：${pathLabel(path)}。正在读取可关联的历史局。`):`第 ${row} 行按位置统计全部已记录结果。`;
     $('inlinePredictionRow').textContent='待选第 '+row+' 行 · '+sourceLabel+'条件统计';
     $('inlineRecommended').textContent=best?best.label+' · '+tier+'出蓝率 '+Math.round(best.rate*100)+'%':'样本不足，暂不推荐';
-    $('inlinePredictionSummary').textContent=conditionText+rates+'。'+(insufficient?'样本不足，仅供参考；':'仅供参考；')+'不能预测随机结果。';
+    $('inlinePredictionSummary').textContent=conditionText+(best?'下列蓝率与推荐均依据'+tier+'。':'')+rates+'。'+(insufficient?'部分位置样本不足；':'')+'不能预测随机结果。';
     $('predictionRowLabel').textContent='第 '+row+' 行 · '+sourceLabel;
     $('sharedStatus').textContent=source==='shared'?'正在显示全员匿名统计；条件样本只计算可关联的完整本局记录。':'全员统计暂不可用，当前显示本机记录。';
-    $('predictionCondition').textContent=conditionText;
+    $('predictionCondition').textContent=conditionText+(canCondition&&tier&&tier!=='完整路径'?'下方卡片和推荐均显示'+tier+'样本。':'');
     $('predictionReward').textContent=early?'2/3':'1/3';
     $('predictionPenalty').textContent=early?'1/3':'2/3';
     $('recommendedPosition').textContent=best?best.label+' · '+Math.round(best.rate*100)+'% 历史出蓝率':'样本不足，暂不推荐';
-    $('recommendationScope').textContent=best?'推荐依据：'+tier+'；各位置均至少 5 条记录。':'完整路径、上一行条件和同一行总体均未达到各位置至少 5 条。';
-    $('sampleWarning').textContent=(insufficient?'样本不足，仅供参考。':'历史样本仅供参考。')+(best&&canCondition&&tier!=='完整路径'?'完整路径样本不够，推荐已退回'+tier+'。':'')+'玩家只记录自己选过的位置，历史出蓝率不能预测随机结果。';
+    $('recommendationScope').textContent=best?'依据：'+tier+' · 蓝 '+best.blue+' / 样本 '+best.count+'。比较时综合出蓝率和样本量，少量样本会降权。':'至少两个位置各有 5 条记录，才会比较并推荐。';
+    $('sampleWarning').textContent=(insufficient?missing.join('、')+'位置样本少于 5 条，未参与比较。':'')+(best&&canCondition&&tier!=='完整路径'?'完整路径可比样本不足，已退回'+tier+'。':'')+'历史样本仅供参考，玩家只记录自己选过的位置，不能预测随机结果。';
     $('predictionCards').replaceChildren();
     shownStats.forEach(item=>{
-      const card=document.createElement('div');card.className='stat-card'+(best?.position===item.position&&(!canCondition||tier==='完整路径')?' recommended':'');
+      const card=document.createElement('div');card.className='stat-card'+(best?.position===item.position?' recommended':'');
       const label=document.createElement('span');label.className='place';label.textContent=item.label;
       const rate=document.createElement('strong');rate.className='rate';rate.textContent=item.rate===null?'—':Math.round(item.rate*100)+'%';
       const sample=document.createElement('span');sample.className='sample';sample.textContent=`蓝 ${item.blue} / 样本 ${item.count}`;

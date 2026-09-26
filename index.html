@@ -207,7 +207,7 @@
         <p id="predictionCondition" class="field-hint">按当前本局路径统计下一行。</p>
         <div class="stat-cards" id="predictionCards"></div>
         <p class="sample-warning" id="sampleWarning">样本不足，仅供参考。</p>
-        <p class="disclaimer">优先比较相同翻牌路径下的下一行；样本不够时退回上一行条件或该行总体。玩家只记录自己选过的位置，匿名数据也可能重复或填错，历史频率不能预测随机翻牌结果。</p>
+        <p class="disclaimer">卡片与推荐始终使用同一组样本。优先比较相同路径；可比位置不足时才退回上一行条件或该行总体。推荐会考虑样本量，玩家自选位置和录入误差仍会造成偏差，不能预测随机翻牌结果。</p>
       </div>
       <div class="panel"><div class="panel-head"><div><h2>该行固定牌色比例</h2><p>与历史统计分开看</p></div></div>
         <div class="probability"><div class="reward"><span>蓝牌 · 奖励</span><strong id="predictionReward">2/3</strong></div><div class="penalty"><span>红牌 · 惩罚</span><strong id="predictionPenalty">1/3</strong></div></div>
