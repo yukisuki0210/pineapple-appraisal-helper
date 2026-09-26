@@ -48,9 +48,11 @@
   const sharedKey=entry=>`r/${entry.row}/${entry.position}/${entry.color}/${entry.id}`;
   const validSharedKey=key=>/^r\/(?:[1-9]|[1-9][0-9])\/(?:left|middle|right)\/(?:blue|red)\/[a-zA-Z0-9-]{12,80}$/.test(key);
   const currentRows=()=>state.entries.filter(entry=>entry.sessionId===state.sessionId);
+  const penaltyCount=()=>currentRows().filter(entry=>entry.color==='red').length;
+  const forcedEndReason=()=>penaltyCount()>=2?'penalties':currentRows().length>=maxRows?'rows':null;
   const lastCurrent=()=>currentRows().at(-1);
   if(!currentRows().length)state.awaiting=false;
-  if(currentRows().length>=maxRows)state.stopped=true;
+  if(forcedEndReason())state.stopped=true;
   if(state.awaiting){const last=lastCurrent();state.draft={position:last.position,color:last.color,multiplier:last.multiplier}}
   $('baseValue').value=state.base;
   $('baseUnit').value=state.baseUnit;
@@ -87,24 +89,26 @@
     const current=state.awaiting?rows.length:upcoming;
     const early=upcoming<=3;
     const maxed=rows.length>=maxRows;
+    const forced=forcedEndReason();
+    const twoPenalties=forced==='penalties';
     $('totalMultiplier').textContent='×'+factorText(t);
     $('revealedCount').textContent=rows.length+' 行';
     $('currentPayout').textContent=validBase(state.base)?money(baseYuan()*t):'—';
-    $('rowPill').textContent=maxed?'第 6 行结束':state.stopped?'已收手':'第 '+current+' 行';
-    $('rowInstruction').textContent=state.stopped?maxed?'已完成第 6 行，本局自动结束；可撤销或重置':'本局已结束；重置可开始新局':state.awaiting?'第 '+current+' 行已记录，可调整本行或继续':'依次选择第 '+current+' 行的位置、牌色和倍率';
-    $('nextRowLabel').textContent=maxed?'第 6 行已结束':state.stopped?'本局已收手':'下一张：第 '+upcoming+' 行';
+    $('rowPill').textContent=twoPenalties?'红牌 2 张结束':maxed?'第 6 行结束':state.stopped?'已收手':'第 '+current+' 行';
+    $('rowInstruction').textContent=twoPenalties?'已出现 2 张惩罚牌，本局自动结束；可撤销或重置':maxed?'已完成第 6 行，本局自动结束；可撤销或重置':state.stopped?'本局已结束；重置可开始新局':(state.awaiting?'第 '+current+' 行已记录，可调整本行或继续':'依次选择第 '+current+' 行的位置、牌色和倍率')+' · 红牌 '+penaltyCount()+'/2';
+    $('nextRowLabel').textContent=twoPenalties?'2 张惩罚牌，已结束':maxed?'第 6 行已结束':state.stopped?'本局已收手':'下一张：第 '+upcoming+' 行';
     $('rewardProbability').textContent=state.stopped?'—':early?'2/3':'1/3';
     $('penaltyProbability').textContent=state.stopped?'—':early?'1/3':'2/3';
     $('riskPill').textContent=state.stopped?'已结束':early?'谨慎':'建议收手';
-    $('riskBadge').textContent=maxed?'已到上限':state.stopped?'已收手':early?'谨慎':'建议收手';
-    $('riskText').textContent=maxed?'本局最多 6 行，已自动结束。没有第 7 行。':state.stopped?'本局已收手。':early?'前 3 行每行有 2 张奖励牌、1 张惩罚牌。无法据此算出盈利概率。':'第 4 行起每行有 1 张奖励牌、2 张惩罚牌。惩罚牌比例更高，建议谨慎收手。';
+    $('riskBadge').textContent=twoPenalties?'红牌已满':maxed?'已到上限':state.stopped?'已收手':early?'谨慎':'建议收手';
+    $('riskText').textContent=twoPenalties?'本局累计 2 张惩罚牌，已自动结束。':maxed?'本局最多 6 行，已自动结束。没有第 7 行。':state.stopped?'本局已收手。':(early?'前 3 行每行有 2 张奖励牌、1 张惩罚牌。无法据此算出盈利概率。':'第 4 行起每行有 1 张奖励牌、2 张惩罚牌。惩罚牌比例更高，建议谨慎收手。')+(penaltyCount()===1?' 已有 1 张红牌，再出 1 张将自动结束。':'');
     $('continueBtn').disabled=state.stopped||!state.awaiting||rows.length>=maxRows;
     $('stopBtn').disabled=state.stopped;
     $('undoBtn').disabled=!rows.length;
     $('addCustom').disabled=state.stopped||(!state.awaiting&&rows.length>=maxRows);
     $('customMultiplier').disabled=state.stopped||(!state.awaiting&&rows.length>=maxRows);
     $('stoppedMessage').hidden=!state.stopped;
-    if(state.stopped)$('stoppedMessage').textContent=(maxed?'第 6 行完成，已自动结束':'已收手')+' · '+rows.length+' 行 · 总倍率 ×'+factorText(t)+(validBase(state.base)?' · 预计收益 '+money(baseYuan()*t):'。输入基础价值可查看收益。');
+    if(state.stopped)$('stoppedMessage').textContent=(twoPenalties?'累计 2 张惩罚牌，已自动结束':maxed?'第 6 行完成，已自动结束':'已收手')+' · '+rows.length+' 行 · 总倍率 ×'+factorText(t)+(validBase(state.base)?' · 预计收益 '+money(baseYuan()*t):'。输入基础价值可查看收益。');
     document.querySelectorAll('[data-position]').forEach(button=>{
       button.disabled=state.stopped||(!state.awaiting&&rows.length>=maxRows);
       button.classList.toggle('selected',button.dataset.position===state.draft.position);
@@ -124,7 +128,7 @@
     if(!state.draft.position)missing.push('位置');
     if(!state.draft.color)missing.push('牌色');
     if(!state.draft.multiplier)missing.push('倍率');
-    $('entryHint').textContent=maxed?'第 6 行已记录，本局自动结束。撤销上一条可重新录入第 6 行。':state.stopped?'本局已收手；历史仍保留。':state.awaiting?'本行已自动记录。可调整当前行，或点“继续鉴定”进入下一行。':'还需选择：'+missing.join('、')+'。选齐后自动记录并更新总倍率。';
+    $('entryHint').textContent=twoPenalties?'第 2 张红牌已记录，本局自动结束。撤销上一条可重新录入。':maxed?'第 6 行已记录，本局自动结束。撤销上一条可重新录入第 6 行。':state.stopped?'本局已收手；历史仍保留。':state.awaiting?'本行已自动记录。可调整当前行，或点“继续鉴定”进入下一行。':'还需选择：'+missing.join('、')+'。选齐后自动记录并更新总倍率。';
     $('history').replaceChildren();
     if(!rows.length){const empty=document.createElement('span');empty.className='history-empty';empty.textContent='本局尚无记录';$('history').append(empty)}
     rows.forEach(entry=>{const chip=document.createElement('span');chip.className='history-chip '+(entry.color||'');chip.textContent=`第 ${entry.row} 行 · ${placeText(entry.position)} · ${colorText(entry.color)} · ×${entry.multiplier}`;$('history').append(chip)});
@@ -132,7 +136,7 @@
   function renderPrediction(){
     const row=nextRow();
     if(state.stopped){
-      const message=currentRows().length>=maxRows?'第 6 行已完成，本局没有下一张。':'本局已收手，没有下一张。';
+      const message=penaltyCount()>=2?'已出现 2 张惩罚牌，本局没有下一张。':currentRows().length>=maxRows?'第 6 行已完成，本局没有下一张。':'本局已收手，没有下一张。';
       $('inlinePredictionRow').textContent='本局已结束';
       $('inlineRecommended').textContent=message;
       $('inlinePredictionSummary').textContent='重置本局后可查看第 1 行的历史样本。';
@@ -252,8 +256,8 @@
     else if(state.draft.position&&state.draft.color&&state.draft.multiplier){
       state.entries.push({id:newId(),sessionId:state.sessionId,row:nextRow(),...state.draft,at:Date.now()});
       state.awaiting=true;
-      if(currentRows().length>=maxRows)state.stopped=true;
     }
+    if(forcedEndReason())state.stopped=true;
     render();
     scheduleSync();
   }
@@ -278,7 +282,7 @@
   $('undoBtn').addEventListener('click',()=>{
     const entry=lastCurrent();if(!entry)return;
     state.entries.splice(state.entries.findIndex(item=>item.id===entry.id),1);
-    state.awaiting=false;state.stopped=false;state.draft=blankDraft();render();scheduleSync();
+    state.awaiting=false;state.stopped=Boolean(forcedEndReason());state.draft=blankDraft();render();scheduleSync();
   });
   $('resetBtn').addEventListener('click',()=>{state.sessionId=newId();state.awaiting=false;state.stopped=false;state.draft=blankDraft();render()});
   $('showMoreHistory').addEventListener('click',()=>{visibleHistory+=30;renderHistory()});

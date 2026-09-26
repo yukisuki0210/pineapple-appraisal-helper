@@ -149,6 +149,42 @@ try{
   })()`);
   check(limit.count===6&&limit.continueDisabled&&limit.positionDisabled&&limit.row.includes('第 6 行')&&limit.next==='本局已结束'&&limit.reward==='—'&&limit.afterExtraAttempt===6&&limit.afterUndo.count===5&&limit.afterUndo.row==='第 6 行'&&limit.afterUndo.positionEnabled,'Six-row forced finish or undo failed');
   console.log('Six-row limit, forced finish, no seventh row, and undo: passed');
+  const penalties=await evaluate(`(()=>{
+    const el=id=>document.getElementById(id);
+    el('resetBtn').click();
+    document.querySelector('[data-position="left"]').click();
+    document.querySelector('[data-color="red"]').click();
+    document.querySelector('[data-value="0.7"]').click();
+    const afterOne={stopped:el('continueBtn').disabled,pill:el('rowPill').textContent};
+    el('continueBtn').click();
+    document.querySelector('[data-position="right"]').click();
+    document.querySelector('[data-color="red"]').click();
+    document.querySelector('[data-value="0.5"]').click();
+    const afterTwo={count:el('history').children.length,stopped:el('continueBtn').disabled,pill:el('rowPill').textContent,message:el('stoppedMessage').textContent,next:el('predictionRowLabel').textContent};
+    return {afterOne,afterTwo};
+  })()`);
+  check(!penalties.afterOne.stopped&&penalties.afterOne.pill.includes('第 1 行')&&penalties.afterTwo.count===2&&penalties.afterTwo.stopped&&penalties.afterTwo.pill.includes('红牌 2 张')&&penalties.afterTwo.message.includes('2 张惩罚牌')&&penalties.afterTwo.next==='本局已结束','Two-penalty forced finish failed');
+  await cdp('Page.navigate',{url:targetUrl});
+  for(let i=0;i<40;i++){if(await evaluate("document.readyState==='complete' && !!document.getElementById('currentOptions')?.children.length"))break;await sleep(100)}
+  const penaltyReload=await evaluate(`(()=>{
+    const el=id=>document.getElementById(id);
+    const stillStopped=el('continueBtn').disabled&&el('rowPill').textContent.includes('红牌 2 张');
+    el('undoBtn').click();
+    const reopens=!el('continueBtn').disabled?false:!document.querySelector('[data-position="left"]').disabled&&el('rowPill').textContent.includes('第 2 行');
+    return {stillStopped,reopens,count:el('history').children.length};
+  })()`);
+  check(penaltyReload.stillStopped&&penaltyReload.reopens&&penaltyReload.count===1,'Two-penalty persistence or undo failed');
+  const editedPenalty=await evaluate(`(()=>{
+    const el=id=>document.getElementById(id);
+    document.querySelector('[data-position="right"]').click();
+    document.querySelector('[data-color="blue"]').click();
+    document.querySelector('[data-value="1.2"]').click();
+    const beforeEdit=el('continueBtn').disabled;
+    document.querySelector('[data-color="red"]').click();
+    return {beforeEdit,afterEdit:el('continueBtn').disabled,message:el('stoppedMessage').textContent,count:el('history').children.length};
+  })()`);
+  check(!editedPenalty.beforeEdit&&editedPenalty.afterEdit&&editedPenalty.message.includes('2 张惩罚牌')&&editedPenalty.count===2,'Editing current row to second penalty did not end the game');
+  console.log('Two-penalty forced finish, reload persistence, and undo: passed');
   const manifest=await (await fetch(new URL('manifest.webmanifest',targetUrl))).json();
   check(manifest.display==='standalone'&&manifest.icons.length===2,'PWA manifest invalid');
   const worker=await evaluate(`Promise.race([
