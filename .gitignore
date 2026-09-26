@@ -1,0 +1,5 @@
+dist/
+.netlify/
+node_modules/
+.DS_Store
+preview-*.png

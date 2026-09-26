@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f4ec">
+  <meta name="description" content="菠萝岛重量鉴定倍率记录、风险参考与收益试算。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="菠萝岛鉴定">
+  <title>菠萝岛鉴定助手</title>
+  <style>
+    :root{color-scheme:light;--cream:#f7f4ec;--paper:#fffefa;--ink:#25221d;--muted:#817a6c;--line:#e8e1d4;--gold:#a77c32;--gold-light:#f3e8ce;--blue:#2d76ac;--blue-light:#eaf3fa;--red:#ad5654;--red-light:#fbefed}
+    *{box-sizing:border-box}
+    html{-webkit-text-size-adjust:100%}
+    body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+    button,input{font:inherit}
+    button{cursor:pointer;touch-action:manipulation}
+    .app{max-width:480px;min-height:100dvh;margin:auto;padding:calc(16px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+    .hero{padding:2px 2px 15px}
+    .eyebrow{font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--gold)}
+    h1{font-size:25px;line-height:1.2;margin:7px 0 6px;letter-spacing:-.035em}
+    .subtitle{font-size:12px;color:var(--muted);margin:0;line-height:1.55}
+    .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:16px;background:#ebe5da;margin-bottom:12px}
+    .tab{border:0;min-height:44px;border-radius:12px;background:transparent;color:#71695e;font-size:13px;font-weight:700}
+    .tab[aria-selected="true"]{color:var(--ink);background:var(--paper);box-shadow:0 1px 3px #32230812}
+    .view{display:none}.view.active{display:block}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:16px;margin:10px 0;box-shadow:0 5px 22px #38291108}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:13px}
+    .panel-head h2{font-size:16px;margin:0;line-height:1.35}
+    .panel-head p{font-size:11px;color:var(--muted);margin:3px 0 0}
+    .overline{color:var(--muted);font-size:11px;letter-spacing:.02em}
+    .step-pill{flex:none;font-size:11px;font-weight:800;color:#72511e;background:var(--gold-light);border-radius:999px;padding:6px 9px}
+    .hero-card{background:linear-gradient(145deg,#26231e,#171613);color:white;border-color:#30291d;padding:18px 17px}
+    .hero-card .overline{color:#d8c9aa}
+    .big-multiplier{font-size:clamp(46px,15vw,70px);font-weight:850;line-height:1.05;letter-spacing:-.06em;font-variant-numeric:tabular-nums;margin:5px 0 14px}
+    .hero-divider{height:1px;background:#ffffff28;margin-bottom:13px}
+    .hero-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .hero-meta span{display:block;color:#cbbfa8;font-size:11px;margin-bottom:4px}
+    .hero-meta strong{font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .value-input{display:block;min-width:0;width:100%;max-width:100%;height:46px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-size:16px;padding:10px 12px;outline:none;-webkit-appearance:none;appearance:none}
+    .value-input:focus{border-color:#cca661;box-shadow:0 0 0 3px #d5b4682d}
+    .field-label{display:block;font-size:12px;font-weight:700;margin:0 0 7px;color:#5e564a}
+    .field-hint{font-size:11px;color:var(--muted);margin:7px 0 0;line-height:1.5}
+    .selection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .multiplier-btn{min-height:48px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+    .multiplier-btn[data-tone="red"]{color:var(--red)}
+    .multiplier-btn[data-tone="blue"]{color:var(--blue)}
+    .multiplier-btn.selected{border-color:var(--gold);background:var(--gold-light);box-shadow:inset 0 0 0 1px var(--gold)}
+    .custom-line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
+    .small-button{height:46px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:0 13px;font-size:12px;font-weight:750;color:#564c3f;white-space:nowrap}
+    .small-button:disabled,.primary:disabled{opacity:.43;cursor:not-allowed}
+    .history{display:flex;flex-wrap:wrap;gap:6px;min-height:32px;margin-top:11px}
+    .history-chip{border-radius:999px;padding:6px 9px;font-size:11px;font-weight:750;background:var(--gold-light);color:#694b20}
+    .history-chip.red{background:var(--red-light);color:var(--red)}
+    .history-chip.blue{background:var(--blue-light);color:var(--blue)}
+    .history-empty{color:var(--muted);font-size:12px;align-self:center}
+    .edit-actions{display:flex;gap:7px;margin-top:9px}
+    .edit-actions .small-button{height:36px}
+    .probability{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .probability>div{padding:11px 12px;border-radius:13px}
+    .probability .reward{background:var(--blue-light);color:var(--blue)}
+    .probability .penalty{background:var(--red-light);color:var(--red)}
+    .probability span{display:block;font-size:11px;font-weight:700}
+    .probability strong{display:block;font-size:24px;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+    .risk{display:flex;gap:9px;align-items:flex-start;border:1px solid #eadfc8;background:#faf4e8;border-radius:13px;padding:11px 12px;margin-top:10px}
+    .risk-badge{font-size:11px;font-weight:800;color:#7b5a28;white-space:nowrap}
+    .risk p{margin:0;color:#675b46;font-size:11px;line-height:1.5}
+    .decision-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .primary,.secondary{min-height:48px;border-radius:13px;font-size:14px;font-weight:800}
+    .primary{border:1px solid #9e7228;background:var(--gold);color:white}
+    .secondary{border:1px solid var(--ink);background:var(--ink);color:white}
+    .stopped{background:#f4eee2;border-radius:12px;padding:12px;margin-top:11px;font-size:12px;line-height:1.5;color:#5b4523}
+    .strategy-card{border:1px solid var(--line);border-radius:14px;padding:13px;margin:8px 0;background:#fff}
+    .strategy-card h3{font-size:13px;margin:0 0 6px}
+    .strategy-card p{font-size:12px;line-height:1.55;color:#625a4f;margin:0}
+    .strategy-card .red-word{color:var(--red);font-weight:800}
+    .strategy-card .blue-word{color:var(--blue);font-weight:800}
+    .disclaimer{background:#f1ede4;color:#736a5d;border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.55;margin:10px 0 0}
+    .trial-result{background:var(--gold-light);border-radius:14px;padding:15px;margin:13px 0}
+    .trial-result span{font-size:11px;color:#725d3b}
+    .trial-result strong{display:block;font-size:30px;margin-top:3px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .trial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .trial-option{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px;text-align:left;min-width:0}
+    .trial-option b{display:block;font-size:17px;color:var(--gold);margin-bottom:3px}
+    .trial-option span{display:block;color:var(--muted);font-size:11px;overflow-wrap:anywhere}
+    .footer{text-align:center;color:#9b9282;font-size:10px;line-height:1.6;padding:12px 5px}
+    @media(max-width:380px){.app{padding-left:max(11px,env(safe-area-inset-left,0px));padding-right:max(11px,env(safe-area-inset-right,0px))}.panel{padding:13px}.selection-grid{gap:6px}.multiplier-btn{font-size:17px}.hero-card{padding:16px}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="eyebrow">PINEAPPLE ISLAND · APPRAISAL</div>
+      <h1>菠萝岛鉴定助手</h1>
+      <p class="subtitle">记录重量鉴定倍率，清楚看收益，也看清下一步风险。</p>
+    </header>
+
+    <nav class="tabs" role="tablist" aria-label="功能切换">
+      <button class="tab" role="tab" id="tab-current" aria-controls="view-current" aria-selected="true" data-view="current">当前鉴定</button>
+      <button class="tab" role="tab" id="tab-strategy" aria-controls="view-strategy" aria-selected="false" data-view="strategy">策略参考</button>
+      <button class="tab" role="tab" id="tab-trial" aria-controls="view-trial" aria-selected="false" data-view="trial">收益试算</button>
+    </nav>
+
+    <section id="view-current" class="view active" role="tabpanel" aria-labelledby="tab-current">
+      <div class="panel hero-card">
+        <span class="overline">当前总倍率</span>
+        <div class="big-multiplier" id="totalMultiplier" aria-live="polite">×1.000</div>
+        <div class="hero-divider"></div>
+        <div class="hero-meta">
+          <div><span>已翻开</span><strong id="revealedCount">0 行</strong></div>
+          <div><span>现在收手预计收益</span><strong id="currentPayout">—</strong></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div><h2>当前鉴定</h2><p id="rowInstruction">请选择第 1 行翻出的倍率</p></div><span class="step-pill" id="rowPill">第 1 行</span></div>
+        <label class="field-label" for="baseValue">果子基础价值</label>
+        <input id="baseValue" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值，例如 1000">
+        <p class="field-hint">收益按基础价值 × 已选倍率计算，单位沿用游戏内价值单位。</p>
+        <div style="height:15px"></div>
+        <div class="field-label">这一行翻出的倍率</div>
+        <div class="selection-grid" id="currentOptions" aria-label="选择倍率"></div>
+        <div class="custom-line"><input id="customMultiplier" class="value-input" type="number" min="0.01" max="100" step="any" inputmode="decimal" placeholder="其他倍率"><button id="addCustom" class="small-button" type="button">使用倍率</button></div>
+        <div class="field-label" style="margin-top:15px">已选倍率</div>
+        <div class="history" id="history" aria-live="polite"></div>
+        <div class="edit-actions"><button id="undoBtn" class="small-button" type="button">撤销上一项</button><button id="resetBtn" class="small-button" type="button">重置鉴定</button></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div><h2>下一次翻牌</h2><p id="nextRowLabel">第 1 行</p></div><span class="step-pill" id="riskPill">谨慎</span></div>
+        <div class="probability"><div class="reward"><span>奖励牌 · 蓝</span><strong id="rewardProbability">2/3</strong></div><div class="penalty"><span>惩罚牌 · 红</span><strong id="penaltyProbability">1/3</strong></div></div>
+        <div class="risk"><strong class="risk-badge" id="riskBadge">谨慎</strong><p id="riskText">前 3 行每行有 2 张奖励牌、1 张惩罚牌。只知道牌色比例，无法算出盈利概率。</p></div>
+        <div class="decision-row"><button id="continueBtn" class="primary" type="button" disabled>继续鉴定</button><button id="stopBtn" class="secondary" type="button">立即收手</button></div>
+        <div id="stoppedMessage" class="stopped" hidden></div>
+        <p class="disclaimer">仅做风险参考。牌色比例不是盈利概率；实际结果以游戏规则和翻出的倍率为准。</p>
+      </div>
+    </section>
+
+    <section id="view-strategy" class="view" role="tabpanel" aria-labelledby="tab-strategy">
+      <div class="panel"><div class="panel-head"><div><h2>策略参考</h2><p>整理玩家经验，帮助回顾决策</p></div></div><p class="disclaimer" style="margin-top:0">经验参考，不代表必赚。加注是玩家策略描述，本站不处理下注金额。</p>
+        <div class="strategy-card"><h3>第 1 行出现<span class="red-word">红色</span></h3><p>经验做法：加注 → 再点两次<span class="blue-word">蓝色</span> → 收手。</p></div>
+        <div class="strategy-card"><h3>第 2 行出现<span class="red-word">红色</span></h3><p>经验做法：加注 → 再点一次<span class="blue-word">蓝色</span> → 收手。</p></div>
+        <div class="strategy-card"><h3>第 3 行及以后出现<span class="red-word">红色</span></h3><p>经验做法：直接收手。</p></div>
+        <div class="strategy-card"><h3>前期一路<span class="blue-word">蓝色</span>到第 7 行</h3><p>可继续按正常节奏判断，仍需留意后续惩罚牌比例。</p></div>
+        <div class="strategy-card"><h3>前期出现过<span class="red-word">红色</span>后一路蓝到第 7 行</h3><p>不建议继续冒险。</p></div>
+      </div>
+    </section>
+
+    <section id="view-trial" class="view" role="tabpanel" aria-labelledby="tab-trial">
+      <div class="panel"><div class="panel-head"><div><h2>收益试算</h2><p>假设倍率变化后的价值</p></div></div>
+        <label class="field-label" for="trialBase">果子基础价值</label><input id="trialBase" class="value-input" type="number" min="0" step="any" inputmode="decimal" placeholder="输入基础价值">
+        <div style="height:13px"></div>
+        <label class="field-label" for="trialMultiplier">当前总倍率</label><input id="trialMultiplier" class="value-input" type="number" min="0.01" max="1000000" step="any" inputmode="decimal" value="1">
+        <button id="useCurrent" class="small-button" type="button" style="height:36px;margin-top:9px">带入当前鉴定</button>
+        <div class="trial-result"><span>现在收手预计收益</span><strong id="trialPayout">—</strong></div>
+        <div class="field-label">假设下一次翻出</div><div class="trial-grid" id="trialGrid"></div>
+        <p class="disclaimer">仅为倍率算术试算，不包含下一次翻到具体倍率的概率，也不计算下注成本。</p>
+      </div>
+    </section>
+    <footer class="footer">菠萝岛鉴定助手 · 数据仅存于本设备 · 仅做风险参考</footer>
+  </main>
+  <script>
+  (()=>{
+    const $=id=>document.getElementById(id);
+    const choices=[0.5,0.7,1.2,1.3,1.7,2.0];
+    const key='pineapple-appraisal-helper-v1';
+    const saved=(()=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}})();
+    const state={rows:Array.isArray(saved?.rows)?saved.rows.filter(n=>Number.isFinite(n)&&n>0&&n<=100).slice(0,99):[],awaiting:Boolean(saved?.awaiting),stopped:Boolean(saved?.stopped),base:saved?.base??''};
+    if(!state.rows.length)state.awaiting=false;
+    $('baseValue').value=state.base;
+    const validBase=value=>value!==''&&Number.isFinite(Number(value))&&Number(value)>=0;
+    const total=()=>state.rows.reduce((a,b)=>a*b,1);
+    const money=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2}).format(n);
+    const multiplier=n=>new Intl.NumberFormat('zh-CN',{minimumFractionDigits:3,maximumFractionDigits:3}).format(n);
+    const save=()=>{try{localStorage.setItem(key,JSON.stringify(state))}catch{}};
+    const tone=n=>n<1?'red':n>1?'blue':'neutral';
+    function render(){
+      const current=state.rows.length+(state.awaiting?0:1);
+      const upcoming=state.rows.length+1;
+      const early=upcoming<=3;
+      const t=total();
+      $('totalMultiplier').textContent='×'+multiplier(t);
+      $('revealedCount').textContent=state.rows.length+' 行';
+      $('currentPayout').textContent=validBase(state.base)?money(Number(state.base)*t):'—';
+      $('rowPill').textContent=state.stopped?'已收手':'第 '+current+' 行';
+      $('rowInstruction').textContent=state.stopped?'本次鉴定已结束':state.awaiting?'第 '+current+' 行已记录，可继续或收手':'请选择第 '+current+' 行翻出的倍率';
+      $('nextRowLabel').textContent=state.stopped?'本次已结束':'第 '+upcoming+' 行';
+      $('rewardProbability').textContent=early?'2/3':'1/3';
+      $('penaltyProbability').textContent=early?'1/3':'2/3';
+      $('riskPill').textContent=state.stopped?'已结束':early?'谨慎':'建议收手';
+      $('riskBadge').textContent=state.stopped?'已收手':early?'谨慎':'建议收手';
+      $('riskText').textContent=early?'前 3 行每行有 2 张奖励牌、1 张惩罚牌。只知道牌色比例，无法算出盈利概率。':'第 4 行起每行有 1 张奖励牌、2 张惩罚牌。惩罚牌比例更高，建议谨慎收手。';
+      $('continueBtn').disabled=state.stopped||!state.awaiting||state.rows.length>=99;
+      $('stopBtn').disabled=state.stopped;
+      $('addCustom').disabled=state.stopped;
+      $('customMultiplier').disabled=state.stopped;
+      $('undoBtn').disabled=!state.rows.length;
+      $('stoppedMessage').hidden=!state.stopped;
+      if(state.stopped)$('stoppedMessage').textContent='已收手 · '+state.rows.length+' 行 · 总倍率 ×'+multiplier(t)+(validBase(state.base)?' · 预计收益 '+money(Number(state.base)*t):'。可输入基础价值查看收益。');
+      $('currentOptions').querySelectorAll('button').forEach(button=>{
+        button.disabled=state.stopped;
+        button.classList.toggle('selected',state.awaiting&&Number(button.dataset.value)===state.rows.at(-1));
+      });
+      $('history').replaceChildren();
+      if(!state.rows.length){const empty=document.createElement('span');empty.className='history-empty';empty.textContent='尚未选择倍率';$('history').append(empty)}
+      state.rows.forEach((n,i)=>{const chip=document.createElement('span');chip.className='history-chip '+tone(n);chip.textContent=`第 ${i+1} 行 · ×${n}`;$('history').append(chip)});
+      save();
+    }
+    function choose(value){
+      const n=Number(value);
+      if(state.stopped||!Number.isFinite(n)||n<=0||n>100)return;
+      if(state.awaiting)state.rows[state.rows.length-1]=n;else state.rows.push(n);
+      state.awaiting=true;
+      render();
+    }
+    for(const n of choices){
+      const button=document.createElement('button');button.type='button';button.className='multiplier-btn';button.dataset.value=String(n);button.dataset.tone=tone(n);button.textContent='×'+n.toFixed(1);button.setAttribute('aria-label','选择倍率 '+n);button.addEventListener('click',()=>choose(n));$('currentOptions').append(button);
+    }
+    $('addCustom').addEventListener('click',()=>{choose($('customMultiplier').value);$('customMultiplier').value=''});
+    $('customMultiplier').addEventListener('keydown',e=>{if(e.key==='Enter')$('addCustom').click()});
+    $('baseValue').addEventListener('input',()=>{state.base=$('baseValue').value;render()});
+    $('continueBtn').addEventListener('click',()=>{if(state.awaiting&&!state.stopped){state.awaiting=false;render()}});
+    $('stopBtn').addEventListener('click',()=>{state.stopped=true;render()});
+    $('undoBtn').addEventListener('click',()=>{if(state.rows.length){state.rows.pop();state.awaiting=false;state.stopped=false;render()}});
+    $('resetBtn').addEventListener('click',()=>{state.rows=[];state.awaiting=false;state.stopped=false;render()});
+    document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(other=>other.setAttribute('aria-selected',String(other===tab)));
+      document.querySelectorAll('.view').forEach(view=>view.classList.toggle('active',view.id==='view-'+tab.dataset.view));
+    }));
+    function trial(){
+      const base=$('trialBase').value;
+      const current=Number($('trialMultiplier').value);
+      const valid=validBase(base)&&Number.isFinite(current)&&current>0&&current<=1000000;
+      $('trialPayout').textContent=valid?money(Number(base)*current):'—';
+      $('trialGrid').replaceChildren();
+      choices.forEach(n=>{
+        const button=document.createElement('button');button.type='button';button.className='trial-option';
+        const heading=document.createElement('b');heading.textContent='×'+n.toFixed(1);
+        const value=document.createElement('span');value.textContent=valid?'总倍率 ×'+multiplier(current*n)+' · 收益 '+money(Number(base)*current*n):'输入基础价值查看';
+        button.append(heading,value);button.addEventListener('click',()=>{$('trialMultiplier').value=Number.isFinite(current)&&current>0?String(current*n):String(n);trial()});$('trialGrid').append(button);
+      });
+    }
+    ['trialBase','trialMultiplier'].forEach(id=>$(id).addEventListener('input',trial));
+    $('useCurrent').addEventListener('click',()=>{$('trialBase').value=state.base;$('trialMultiplier').value=String(total());trial()});
+    render();trial();
+    if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+  })();
+  </script>
+</body>
+</html>
